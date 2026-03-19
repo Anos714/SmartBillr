@@ -4,9 +4,9 @@ import "./index.css";
 import App from "./App.tsx";
 import { ClerkProvider } from "@clerk/react";
 
-const PublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
-if (!PublishableKey) {
+if (!PUBLISHABLE_KEY) {
   throw new Error(
     "VITE_CLERK_PUBLISHABLE_KEY is not defined in the environment variables.",
   );
@@ -14,7 +14,7 @@ if (!PublishableKey) {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ClerkProvider publishableKey={PublishableKey}>
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
       <App />
     </ClerkProvider>
   </StrictMode>,

@@ -1,8 +1,17 @@
+import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/react";
+
 const App = () => {
   return (
     <div className="bg-red-500">
-      App
-      <img src="favicon.svg" alt="" />
+      <header>
+        <Show when="signed-out">
+          <SignInButton />
+          <SignUpButton />
+        </Show>
+        <Show when="signed-in">
+          <UserButton />
+        </Show>
+      </header>
     </div>
   );
 };
