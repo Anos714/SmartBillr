@@ -8,8 +8,12 @@ interface IUser extends Document {
   plan: "free" | "pro";
   isUserVerified: boolean;
   tokenVersion: number;
+  emailVerifyToken: string | undefined;
+  emailVerifyTokenExpiry: Date | undefined;
+  lastVerificationSentAt: Date | undefined;
+  emailVerifiedAt: Date | undefined;
   resetPassToken: string | undefined;
-  resetPassTokenExpiry: string | undefined;
+  resetPassTokenExpiry: Date | undefined;
 }
 
 const UserSchema = new Schema<IUser>(
@@ -31,7 +35,7 @@ const UserSchema = new Schema<IUser>(
       required: true,
       select: false,
     },
-    role: { type: String, enum: ["user", "admin"], deafult: "user" },
+    role: { type: String, enum: ["user", "admin"], default: "user" },
     plan: { type: String, enum: ["free", "pro"], default: "free" },
     isUserVerified: {
       type: Boolean,
@@ -39,8 +43,12 @@ const UserSchema = new Schema<IUser>(
     },
     tokenVersion: {
       type: Number,
-      deafult: 0,
+      default: 0,
     },
+    emailVerifyToken: { type: String, default: undefined },
+    emailVerifyTokenExpiry: { type: Date, default: undefined },
+    lastVerificationSentAt: { type: Date, default: undefined },
+    emailVerifiedAt: { type: Date, default: undefined },
     resetPassToken: { type: String, default: undefined },
     resetPassTokenExpiry: { type: Date, default: undefined },
   },
