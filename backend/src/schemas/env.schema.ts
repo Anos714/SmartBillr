@@ -5,5 +5,4 @@ export const envSchema = z.object({
   FRONTEND_URL: z.string().default("http://localhost:5173"),
 });
 
-export const EnvSchema = z.in;
 
