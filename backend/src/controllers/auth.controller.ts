@@ -16,6 +16,8 @@ import {
   generateAccessToken,
   generateRefreshToken,
   generateEmailVerificationURL,
+  verifyRefreshToken,
+  RefreshTokenRes,
 } from "../lib/auth";
 import { env } from "../config/env";
 import { sendMail } from "../lib/sendMail";
@@ -298,8 +300,103 @@ export const resendVerificationEmail = async (
 };
 
 export const refreshTokenHandler = async (req: Request, res: Response) => {
-  
+  const { refreshToken } = req.cookies;
+  if (!refreshToken) {
+    return res.status(404).json({
+      success: false,
+      message: "Token is missing",
+    });
+  }
+
+  let payload: RefreshTokenRes;
   try {
+    payload = verifyRefreshToken(refreshToken);
+  } catch {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid refresh token",
+    });
+  }
+
+  try {
+    const { sub, jti, tokenVersion } = payload;
+
+    //redis check
+    const key = `refresh_token:${sub}:${jti}`;
+    const storedToken = await client.get(key);
+    if (!storedToken) {
+      return res.status(401).json({
+        success: false,
+        message: "Refresh token not found",
+      });
+    }
+
+    const hashedIncoming = generateHashedToken(refreshToken);
+
+    if (storedToken !== hashedIncoming) {
+      return res.status(401).json({
+        success: false,
+        message: "Token mismatch",
+      });
+    }
+
+    // 🔹 DB check (tokenVersion)
+    const user = await User.findById(sub);
+
+    if (!user || user.tokenVersion !== tokenVersion) {
+      return res.status(401).json({
+        success: false,
+        message: "Token invalidated",
+      });
+    }
+
+    //  TOKEN ROTATION
+
+    // delete old token from redis
+    await client.del(key);
+
+    const accessTokenPayload = {
+      sub: user._id.toString(),
+      role: user.role,
+      plan: user.plan,
+      tokenVersion: user.tokenVersion,
+    };
+    const refreshTokenPayload = {
+      sub: user._id.toString(),
+      jti: crypto.randomUUID(),
+      tokenVersion: user.tokenVersion,
+    };
+
+    const newAccessToken = generateAccessToken(accessTokenPayload);
+
+    const newRefreshToken = generateRefreshToken(refreshTokenPayload);
+
+    const hashedNew = generateHashedToken(newRefreshToken);
+
+    await client.set(
+      `refresh_token:${refreshTokenPayload.sub}:${refreshTokenPayload.jti}`,
+      hashedNew,
+      {
+        EX: 7 * 24 * 60 * 60,
+      },
+    );
+
+    const cookieOption = {
+      httpOnly: true,
+      secure: env.NODE_ENV === "production",
+      sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+      path: "/",
+    } as const;
+
+    res.cookie("refreshToken", newRefreshToken, {
+      ...cookieOption,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      success: true,
+      accessToken: newAccessToken,
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({

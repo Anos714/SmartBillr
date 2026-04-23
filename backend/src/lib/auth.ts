@@ -37,3 +37,65 @@ export const generateAccessToken = (payload: {
 }) => {
   return jwt.sign(payload, env.ACCESS_SECRET, { expiresIn: "15m" });
 };
+
+export interface RefreshTokenRes {
+  sub: string;
+  jti: string;
+  tokenVersion: number;
+}
+
+export interface AccessTokenRes {
+  sub: string;
+  role: "user" | "admin";
+  plan: "free" | "pro";
+  tokenVersion: number;
+}
+
+export const verifyRefreshToken = (token: string): RefreshTokenRes => {
+  const decoded = jwt.verify(token, env.REFRESH_SECRET);
+
+  if (
+    typeof decoded !== "object" ||
+    decoded === null ||
+    !("sub" in decoded) ||
+    !("jti" in decoded) ||
+    !("tokenVersion" in decoded) ||
+    typeof decoded.sub !== "string" ||
+    typeof decoded.jti !== "string" ||
+    typeof decoded.tokenVersion !== "number"
+  ) {
+    throw new Error("Invalid refresh token payload");
+  }
+
+  return {
+    sub: decoded.sub,
+    jti: decoded.jti,
+    tokenVersion: decoded.tokenVersion,
+  };
+};
+
+export const verifyAccessToken = (token: string): AccessTokenRes => {
+  const decoded = jwt.verify(token, env.ACCESS_SECRET);
+
+  if (
+    typeof decoded !== "object" ||
+    decoded === null ||
+    !("sub" in decoded) ||
+    !("role" in decoded) ||
+    !("plan" in decoded) ||
+    !("tokenVersion" in decoded) ||
+    typeof decoded.sub !== "string" ||
+    (decoded.role !== "user" && decoded.role !== "admin") ||
+    (decoded.plan !== "free" && decoded.plan !== "pro") ||
+    typeof decoded.tokenVersion !== "number"
+  ) {
+    throw new Error("Invalid access token payload");
+  }
+
+  return {
+    sub: decoded.sub,
+    role: decoded.role,
+    plan: decoded.plan,
+    tokenVersion: decoded.tokenVersion,
+  };
+};
