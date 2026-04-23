@@ -1,15 +1,26 @@
 import { Request, Response } from "express";
-import { SignupReq, signupSchema } from "../schemas/signup.schema";
+import {
+  ResendVerificationEmailReq,
+  resendVerificationEMailSchema,
+  SigninReq,
+  signinSchema,
+  SignupReq,
+  signupSchema,
+} from "../schemas/auth.schema";
 import { User } from "../models/user.model";
 import {
   generateHashedToken,
   generateEmailVerificationToken,
   hashPassword,
+  verifyPassword,
+  generateAccessToken,
+  generateRefreshToken,
+  generateEmailVerificationURL,
 } from "../lib/auth";
 import { env } from "../config/env";
 import { sendMail } from "../lib/sendMail";
 import { verifyEmailTemplate } from "../templates/verifyEmail.template";
-import jwt from "jsonwebtoken";
+import client from "../config/redis";
 
 export const signupUser = async (
   req: Request<{}, {}, SignupReq>,
@@ -47,7 +58,7 @@ export const signupUser = async (
     newUser.emailVerifyTokenExpiry = new Date(Date.now() + 15 * 60 * 1000);
     await newUser.save();
 
-    const emailVerifyUrl = `${env.APP_URL}/api/v1/auth/email-verify?token=${token}`;
+    const emailVerifyUrl = generateEmailVerificationURL(token);
     await sendMail(
       newUser.email,
       "Email Verification mail",
@@ -75,6 +86,100 @@ export const signupUser = async (
   }
 };
 
+export const signinUser = async (
+  req: Request<{}, {}, SigninReq>,
+  res: Response,
+) => {
+  const result = signinSchema.safeParse(req.body);
+  if (!result.success) {
+    return res.status(422).json({
+      success: false,
+      message: "Validation failed",
+    });
+  }
+
+  const { email, password } = result.data;
+  try {
+    const user = await User.findOne({ email }).select("+password");
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+    const isPasswordValid = await verifyPassword(password, user.password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    if (!user.isUserVerified) {
+      return res.status(403).json({
+        success: false,
+        message: "Please verify your email first",
+      });
+    }
+
+    const accessTokenPayload = {
+      sub: user._id.toString(),
+      role: user.role,
+      plan: user.plan,
+      tokenVersion: user.tokenVersion,
+    };
+    const refreshTokenPayload = {
+      sub: user._id.toString(),
+      jti: crypto.randomUUID(),
+      tokenVersion: user.tokenVersion,
+    };
+
+    const accessToken = generateAccessToken(accessTokenPayload);
+    const refreshToken = generateRefreshToken(refreshTokenPayload);
+    const hashedRefreshToken = generateHashedToken(refreshToken);
+
+    const cookieOption = {
+      httpOnly: true,
+      secure: env.NODE_ENV === "production",
+      sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+      path: "/",
+    } as const;
+
+    res.cookie("refreshToken", refreshToken, {
+      ...cookieOption,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    await client.set(
+      `refresh_token:${refreshTokenPayload.sub}:${refreshTokenPayload.jti}`,
+      hashedRefreshToken,
+      {
+        EX: 7 * 24 * 60 * 60,
+      },
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "User logged in successfully",
+      accessToken: accessToken,
+      data: {
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        isUserVerified: user.isUserVerified,
+        tokenVersion: user.tokenVersion,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
 export const verifyEmailToken = async (req: Request, res: Response) => {
   const { token } = req.query;
 
@@ -94,16 +199,9 @@ export const verifyEmailToken = async (req: Request, res: Response) => {
     });
 
     if (!user) {
-      return res.status(400).json({
-        success: false,
+      return res.status(200).json({
+        success: true,
         message: "Invalid or expired verification link",
-      });
-    }
-
-    if (user.isUserVerified) {
-      return res.status(400).json({
-        success: false,
-        message: "Email already verified",
       });
     }
 
@@ -119,22 +217,91 @@ export const verifyEmailToken = async (req: Request, res: Response) => {
       message: "Email verified successfully",
     });
   } catch (error) {
-    if (error instanceof jwt.TokenExpiredError) {
-      return res.status(400).json({
-        success: false,
-        message: "Verification link expired",
-      });
-    }
-
-    if (error instanceof jwt.JsonWebTokenError) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid token",
-      });
-    }
-
     console.error(error);
 
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+export const resendVerificationEmail = async (
+  req: Request<{}, {}, ResendVerificationEmailReq>,
+  res: Response,
+) => {
+  const result = resendVerificationEMailSchema.safeParse(req.body);
+  if (!result.success) {
+    return res.status(422).json({
+      success: false,
+      message: "validation failed",
+    });
+  }
+  try {
+    const { email } = result.data;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "If account exists, verification email sent",
+      });
+    }
+
+    if (user.isUserVerified) {
+      return res.status(401).json({
+        success: false,
+        message: "User is already verified",
+      });
+    }
+
+    //rate limiting
+    const now = Date.now();
+
+    if (
+      user.lastVerificationSentAt &&
+      now - user.lastVerificationSentAt.getTime() < 2 * 60 * 1000
+    ) {
+      return res.status(429).json({
+        success: false,
+        message: "Please wait before requesting another email",
+      });
+    }
+
+    const token = generateEmailVerificationToken();
+    const hashedToken = generateHashedToken(token);
+
+    user.lastVerificationSentAt = new Date();
+    user.emailVerifyToken = hashedToken;
+    user.emailVerifyTokenExpiry = new Date(Date.now() + 15 * 60 * 1000);
+    await user.save();
+
+    const emailVerifyUrl = generateEmailVerificationURL(token);
+
+    await sendMail(
+      user.email,
+      "Email Verification mail",
+      verifyEmailTemplate(user.fullName, emailVerifyUrl),
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "If account exists, verification email sent",
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+export const refreshTokenHandler = async (req: Request, res: Response) => {
+  
+  try {
+  } catch (error) {
+    console.error(error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",

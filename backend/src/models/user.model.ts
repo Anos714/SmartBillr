@@ -55,4 +55,10 @@ const UserSchema = new Schema<IUser>(
   { timestamps: true },
 );
 
+//indexes
+UserSchema.index({
+  emailVerifyToken: 1,
+  emailVerifyTokenExpiry: 1,
+});
+
 export const User = model("User", UserSchema);
