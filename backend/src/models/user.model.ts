@@ -14,6 +14,7 @@ interface IUser extends Document {
   emailVerifiedAt: Date | undefined;
   resetPassToken: string | undefined;
   resetPassTokenExpiry: Date | undefined;
+  lastPasswordResetSentAt: Date | undefined;
 }
 
 const UserSchema = new Schema<IUser>(
@@ -51,6 +52,7 @@ const UserSchema = new Schema<IUser>(
     emailVerifiedAt: { type: Date, default: undefined },
     resetPassToken: { type: String, default: undefined },
     resetPassTokenExpiry: { type: Date, default: undefined },
+    lastPasswordResetSentAt: { type: Date, default: undefined },
   },
   { timestamps: true },
 );

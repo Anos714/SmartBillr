@@ -3,6 +3,13 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env";
 import crypto from "crypto";
 
+export const cookieOption = {
+  httpOnly: true,
+  secure: env.NODE_ENV === "production",
+  sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+  path: "/",
+} as const;
+
 export const hashPassword = async (password: string) => {
   return await bcrypt.hash(password, 10);
 };
@@ -22,8 +29,8 @@ export const generateHashedToken = (token: string) => {
   return crypto.createHash("sha256").update(token).digest("hex");
 };
 
-export const generateVerificationURL = (token: string, endpoint: string) => {
-  return `${env.APP_URL}/api/v1/auth/${endpoint}?token=${token}`;
+export const generateActionURL = (token: string, endpoint: string) => {
+  return `${env.FRONTEND_URL}/${endpoint}?token=${token}`;
 };
 
 export const generateRefreshToken = (payload: { sub: string; jti: string }) => {

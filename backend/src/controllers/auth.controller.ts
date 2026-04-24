@@ -4,10 +4,13 @@ import {
   forgotPasswordSchema,
   ResendVerificationEmailReq,
   resendVerificationEMailSchema,
+  ResetPasswordReq,
+  resetPasswordSchema,
   SigninReq,
   signinSchema,
   SignupReq,
   signupSchema,
+  verifyEmailSchema,
 } from "../schemas/auth.schema";
 import { User } from "../models/user.model";
 import {
@@ -17,14 +20,16 @@ import {
   verifyPassword,
   generateAccessToken,
   generateRefreshToken,
-  generateVerificationURL,
+  generateActionURL,
   verifyRefreshToken,
   RefreshTokenRes,
+  cookieOption,
 } from "../lib/auth";
 import { env } from "../config/env";
 import { sendMail } from "../lib/sendMail";
 import { verifyEmailTemplate } from "../templates/verifyEmail.template";
 import client from "../config/redis";
+import { resetPasswordTemplate } from "../templates/resetPasswordMail.template";
 
 export const signupUser = async (
   req: Request<{}, {}, SignupReq>,
@@ -62,7 +67,7 @@ export const signupUser = async (
     newUser.emailVerifyTokenExpiry = new Date(Date.now() + 15 * 60 * 1000);
     await newUser.save();
 
-    const emailVerifyUrl = generateVerificationURL(token, "email-verify");
+    const emailVerifyUrl = generateActionURL(token, "verify-email");
     await sendMail(
       newUser.email,
       "Email Verification mail",
@@ -143,13 +148,6 @@ export const signinUser = async (
     const refreshToken = generateRefreshToken(refreshTokenPayload);
     const hashedRefreshToken = generateHashedToken(refreshToken);
 
-    const cookieOption = {
-      httpOnly: true,
-      secure: env.NODE_ENV === "production",
-      sameSite: env.NODE_ENV === "production" ? "none" : "lax",
-      path: "/",
-    } as const;
-
     res.cookie("refreshToken", refreshToken, {
       ...cookieOption,
       maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -185,14 +183,15 @@ export const signinUser = async (
 };
 
 export const verifyEmailToken = async (req: Request, res: Response) => {
-  const { token } = req.query;
-
-  if (!token || typeof token !== "string") {
-    return res.status(400).json({
+  const result = verifyEmailSchema.safeParse(req.body);
+  if (!result.success) {
+    return res.status(422).json({
       success: false,
-      message: "Token is missing",
+      message: "Validation failed",
     });
   }
+
+  const { token } = result.data;
 
   try {
     const hashedToken = generateHashedToken(token);
@@ -203,9 +202,16 @@ export const verifyEmailToken = async (req: Request, res: Response) => {
     });
 
     if (!user) {
-      return res.status(200).json({
-        success: true,
+      return res.status(400).json({
+        success: false,
         message: "Invalid or expired verification link",
+      });
+    }
+
+    if (user.isUserVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already verified",
       });
     }
 
@@ -245,16 +251,16 @@ export const resendVerificationEmail = async (
     const { email } = result.data;
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({
-        success: false,
+      return res.status(200).json({
+        success: true,
         message: "If account exists, verification email sent",
       });
     }
 
     if (user.isUserVerified) {
-      return res.status(401).json({
+      return res.status(400).json({
         success: false,
-        message: "User is already verified",
+        message: "Email already verified",
       });
     }
 
@@ -279,7 +285,7 @@ export const resendVerificationEmail = async (
     user.emailVerifyTokenExpiry = new Date(Date.now() + 15 * 60 * 1000);
     await user.save();
 
-    const emailVerifyUrl = generateVerificationURL(token, "email-verify");
+    const emailVerifyUrl = generateActionURL(token, "verify-email");
 
     await sendMail(
       user.email,
@@ -383,13 +389,6 @@ export const refreshTokenHandler = async (req: Request, res: Response) => {
       },
     );
 
-    const cookieOption = {
-      httpOnly: true,
-      secure: env.NODE_ENV === "production",
-      sameSite: env.NODE_ENV === "production" ? "none" : "lax",
-      path: "/",
-    } as const;
-
     res.cookie("refreshToken", newRefreshToken, {
       ...cookieOption,
       maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -425,14 +424,123 @@ export const forgotPasswordHandler = async (
   try {
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({
+      return res.status(200).json({
         success: false,
-        message: "If account exists, reset password email sent",
+        message: "If this account exists, reset password email sent",
+      });
+    }
+
+    const now = Date.now();
+
+    if (
+      user.lastPasswordResetSentAt &&
+      now - user.lastPasswordResetSentAt.getTime() < 2 * 60 * 1000
+    ) {
+      return res.status(429).json({
+        success: false,
+        message: "Please wait before requesting another reset email",
       });
     }
 
     const token = generateToken();
     const hashedToken = generateHashedToken(token);
+    user.lastPasswordResetSentAt = new Date();
+    user.resetPassToken = undefined;
+    user.resetPassTokenExpiry = undefined;
+    user.resetPassToken = hashedToken;
+    user.resetPassTokenExpiry = new Date(Date.now() + 15 * 60 * 1000);
+    await user.save();
+
+    const verifyUrl = generateActionURL(token, "reset-password");
+    await sendMail(
+      user.email,
+      "Reset your password",
+      resetPasswordTemplate(user.fullName, verifyUrl),
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "If this account exists, reset password email sent",
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+export const resetPasswordHandler = async (
+  req: Request<{}, {}, ResetPasswordReq>,
+  res: Response,
+) => {
+  const result = resetPasswordSchema.safeParse(req.body);
+  if (!result.success) {
+    return res.status(422).json({
+      success: false,
+      message: "Validation failed",
+      error: result.error,
+    });
+  }
+
+  const { token, newPassword } = result.data;
+  const hashedToken = generateHashedToken(token);
+  try {
+    const user = await User.findOne({
+      resetPassToken: hashedToken,
+      resetPassTokenExpiry: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired reset link",
+      });
+    }
+
+    const hashedPassword = await hashPassword(newPassword);
+    user.password = hashedPassword;
+    user.tokenVersion += 1;
+    user.resetPassToken = undefined;
+    user.resetPassTokenExpiry = undefined;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successfully",
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+export const logoutHandler = async (req: Request, res: Response) => {
+  try {
+    const { refreshToken } = req.cookies;
+
+    if (refreshToken) {
+      try {
+        const payload = verifyRefreshToken(refreshToken);
+        const key = `refresh_token:${payload.sub}:${payload.jti}`;
+        await client.del(key);
+      } catch {
+        // ignore invalid token
+      }
+    }
+
+    res.clearCookie("refreshToken", {
+      ...cookieOption,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({
