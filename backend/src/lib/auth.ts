@@ -14,7 +14,7 @@ export const verifyPassword = async (
   return await bcrypt.compare(password, hashedPassword);
 };
 
-export const generateEmailVerificationToken = () => {
+export const generateToken = () => {
   return crypto.randomBytes(32).toString("hex");
 };
 
@@ -22,8 +22,8 @@ export const generateHashedToken = (token: string) => {
   return crypto.createHash("sha256").update(token).digest("hex");
 };
 
-export const generateEmailVerificationURL = (token: string) => {
-  return `${env.APP_URL}/api/v1/auth/email-verify?token=${token}`;
+export const generateVerificationURL = (token: string, endpoint: string) => {
+  return `${env.APP_URL}/api/v1/auth/${endpoint}?token=${token}`;
 };
 
 export const generateRefreshToken = (payload: { sub: string; jti: string }) => {

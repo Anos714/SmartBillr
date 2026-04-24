@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import {
+  ForgotPasswordReq,
+  forgotPasswordSchema,
   ResendVerificationEmailReq,
   resendVerificationEMailSchema,
   SigninReq,
@@ -10,12 +12,12 @@ import {
 import { User } from "../models/user.model";
 import {
   generateHashedToken,
-  generateEmailVerificationToken,
+  generateToken,
   hashPassword,
   verifyPassword,
   generateAccessToken,
   generateRefreshToken,
-  generateEmailVerificationURL,
+  generateVerificationURL,
   verifyRefreshToken,
   RefreshTokenRes,
 } from "../lib/auth";
@@ -52,7 +54,7 @@ export const signupUser = async (
       password: hashedPassword,
     });
 
-    const token = generateEmailVerificationToken();
+    const token = generateToken();
 
     //store email verification token in db
     const hashedEmailVerificationToken = generateHashedToken(token);
@@ -60,7 +62,7 @@ export const signupUser = async (
     newUser.emailVerifyTokenExpiry = new Date(Date.now() + 15 * 60 * 1000);
     await newUser.save();
 
-    const emailVerifyUrl = generateEmailVerificationURL(token);
+    const emailVerifyUrl = generateVerificationURL(token, "email-verify");
     await sendMail(
       newUser.email,
       "Email Verification mail",
@@ -269,7 +271,7 @@ export const resendVerificationEmail = async (
       });
     }
 
-    const token = generateEmailVerificationToken();
+    const token = generateToken();
     const hashedToken = generateHashedToken(token);
 
     user.lastVerificationSentAt = new Date();
@@ -277,7 +279,7 @@ export const resendVerificationEmail = async (
     user.emailVerifyTokenExpiry = new Date(Date.now() + 15 * 60 * 1000);
     await user.save();
 
-    const emailVerifyUrl = generateEmailVerificationURL(token);
+    const emailVerifyUrl = generateVerificationURL(token, "email-verify");
 
     await sendMail(
       user.email,
@@ -397,6 +399,40 @@ export const refreshTokenHandler = async (req: Request, res: Response) => {
       success: true,
       accessToken: newAccessToken,
     });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+export const forgotPasswordHandler = async (
+  req: Request<{}, {}, ForgotPasswordReq>,
+  res: Response,
+) => {
+  const result = forgotPasswordSchema.safeParse(req.body);
+  if (!result.success) {
+    return res.status(422).json({
+      success: false,
+      message: "Validation failed",
+    });
+  }
+
+  const { email } = result.data;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "If account exists, reset password email sent",
+      });
+    }
+
+    const token = generateToken();
+    const hashedToken = generateHashedToken(token);
   } catch (error) {
     console.error(error);
     return res.status(500).json({

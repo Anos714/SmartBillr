@@ -26,3 +26,9 @@ export const resendVerificationEMailSchema = z.object({
 });
 
 export type ResendVerificationEmailReq = z.infer<typeof signinSchema>;
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email().min(1, "email is required").trim().lowercase(),
+});
+
+export type ForgotPasswordReq = z.infer<typeof forgotPasswordSchema>;
