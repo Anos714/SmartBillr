@@ -48,3 +48,16 @@ export const resetPasswordSchema = z.object({
 });
 
 export type ResetPasswordReq = z.infer<typeof resetPasswordSchema>;
+
+export const changePasswordSchema = z.object({
+  oldPassword: z
+    .string()
+    .min(1, "Old password is required")
+    .min(8, "Old password must be atleast 8 characters long"),
+  newPassword: z
+    .string()
+    .min(1, "New password is required")
+    .min(8, "New password must be atleast 8 characters long"),
+});
+
+export type ChangePasswordReq = z.infer<typeof changePasswordSchema>;

@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import {
+  ChangePasswordReq,
+  changePasswordSchema,
   ForgotPasswordReq,
   forgotPasswordSchema,
   ResendVerificationEmailReq,
@@ -480,7 +482,6 @@ export const resetPasswordHandler = async (
     return res.status(422).json({
       success: false,
       message: "Validation failed",
-      error: result.error,
     });
   }
 
@@ -540,6 +541,95 @@ export const logoutHandler = async (req: Request, res: Response) => {
     return res.status(200).json({
       success: true,
       message: "Logged out successfully",
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+export const getMe = async (req: Request, res: Response) => {
+  try {
+    const { sub } = req.user;
+    const user = await User.findById(sub).select(
+      "fullName email role plan isUserVerified",
+    );
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+export const changePasswordHandler = async (
+  req: Request<{}, {}, ChangePasswordReq>,
+  res: Response,
+) => {
+  const { sub } = req.user;
+
+  const result = changePasswordSchema.safeParse(req.body);
+  if (!result.success) {
+    return res.status(422).json({
+      success: false,
+      message: "Validation failed",
+    });
+  }
+
+  const { oldPassword, newPassword } = result.data;
+
+  try {
+    const user = await User.findById(sub).select("+password");
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const isValid = await verifyPassword(oldPassword, user.password);
+
+    if (!isValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Old password is incorrect",
+      });
+    }
+
+    const isSame = await verifyPassword(newPassword, user.password);
+
+    if (isSame) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be different",
+      });
+    }
+
+    const hashedPassword = await hashPassword(newPassword);
+
+    user.password = hashedPassword;
+    user.tokenVersion += 1;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Password changed successfully. Please login again.",
     });
   } catch (error) {
     console.error(error);

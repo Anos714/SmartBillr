@@ -1,6 +1,8 @@
 import { Router } from "express";
 import {
+  changePasswordHandler,
   forgotPasswordHandler,
+  getMe,
   logoutHandler,
   refreshTokenHandler,
   resendVerificationEmail,
@@ -23,9 +25,11 @@ router.post("/resend-email-verify", resendVerificationEmail);
 // password
 router.post("/forgot-password", forgotPasswordHandler);
 router.post("/reset-password", resetPasswordHandler);
+router.post("/change-password", isUserAuthenticated, changePasswordHandler);
 
 // auth
 router.post("/refresh", isUserAuthenticated, refreshTokenHandler);
 router.post("/logout", logoutHandler);
+router.get("/me", isUserAuthenticated, getMe);
 
 export default router;
