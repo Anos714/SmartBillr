@@ -1,6 +1,8 @@
 import { Document, Schema, model } from "mongoose";
 
 interface IUser extends Document {
+  provider: "google" | "local";
+  googleId?: string;
   fullName: string;
   email: string;
   password: string;
@@ -19,6 +21,12 @@ interface IUser extends Document {
 
 const UserSchema = new Schema<IUser>(
   {
+    provider: { type: String, enum: ["google", "local"], default: "local" },
+    googleId: {
+      type: String,
+      unique: true,
+    },
+
     fullName: {
       type: String,
       required: true,
