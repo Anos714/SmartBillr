@@ -1,5 +1,6 @@
 import express from "express";
 import authRouter from "./routes/auth.route";
+import googleAuthRouter from "./routes/googleAuth.route";
 
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
@@ -16,5 +17,6 @@ app.use(cookieParser());
 
 //routes
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/auth", googleAuthRouter);
 
 export default app;
