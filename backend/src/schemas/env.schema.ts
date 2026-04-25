@@ -18,4 +18,7 @@ export const envSchema = z.object({
   //jwt secret
   ACCESS_SECRET: z.string(),
   REFRESH_SECRET: z.string(),
+
+  //google secrets key
+  GOOGLE_CLIENT_ID: z.string(),
 });

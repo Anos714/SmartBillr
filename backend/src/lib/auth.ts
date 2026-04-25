@@ -41,6 +41,7 @@ export const generateAccessToken = (payload: {
   sub: string;
   role: string;
   plan: string;
+  tokenVersion: number;
 }) => {
   return jwt.sign(payload, env.ACCESS_SECRET, { expiresIn: "15m" });
 };
