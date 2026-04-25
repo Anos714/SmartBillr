@@ -85,9 +85,7 @@ export interface IInvoice {
 
   paidAt?: Date;
   sentAt?: Date;
-
-  createdAt?: Date;
-  updatedAt?: Date;
+  isDeleted: boolean;
 }
 
 const BusinessSchema = new Schema(
@@ -264,11 +262,16 @@ const InvoiceSchema = new Schema(
     // 🔹 TRACKING
     paidAt: Date,
     sentAt: Date,
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true },
 );
 
-// 🔥 UNIQUE INDEX (per user)
+//  UNIQUE INDEX (per user)
 InvoiceSchema.index({ userId: 1, invoiceNumber: 1 }, { unique: true });
+InvoiceSchema.index({ userId: 1, createdAt: -1 });
+InvoiceSchema.index({ userId: 1, status: 1 });
+InvoiceSchema.index({ userId: 1, dueDate: 1 });
+InvoiceSchema.index({ userId: 1, _id: -1 });
 
 export const Invoice = model("Invoice", InvoiceSchema);
