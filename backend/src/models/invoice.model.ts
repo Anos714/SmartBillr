@@ -69,7 +69,7 @@ export interface IInvoice {
   issueDate: Date;
   dueDate: Date;
 
-  currency?: string;
+  currency?: "INR" | "USD";
 
   items: IItem[];
 
@@ -88,7 +88,7 @@ export interface IInvoice {
   isDeleted: boolean;
 }
 
-const BusinessSchema = new Schema(
+const BusinessSchema = new Schema<IBusiness>(
   {
     name: { type: String, required: true },
     email: String,
@@ -105,7 +105,7 @@ const BusinessSchema = new Schema(
   { _id: false },
 );
 
-const ClientSchema = new Schema(
+const ClientSchema = new Schema<IClient>(
   {
     name: { type: String, required: true },
     email: String,
@@ -116,7 +116,7 @@ const ClientSchema = new Schema(
   { _id: false },
 );
 
-const ItemSchema = new Schema(
+const ItemSchema = new Schema<IItem>(
   {
     name: { type: String, required: true },
     description: String,
@@ -141,17 +141,18 @@ const ItemSchema = new Schema(
 
     total: {
       type: Number,
-      required: true, // ⚠️ calculated in backend
+      required: true,
     },
   },
   { _id: false },
 );
 
-const PaymentSchema = new Schema(
+const PaymentSchema = new Schema<IPayment>(
   {
     paymentMethod: {
       type: String,
       enum: ["cash", "bank", "upi", "card"],
+      default: "cash",
     },
 
     paymentDetails: {
@@ -164,7 +165,7 @@ const PaymentSchema = new Schema(
   { _id: false },
 );
 
-const InvoiceSchema = new Schema(
+const InvoiceSchema = new Schema<IInvoice>(
   {
     userId: {
       type: Schema.Types.ObjectId,
@@ -208,6 +209,7 @@ const InvoiceSchema = new Schema(
 
     currency: {
       type: String,
+      enum: ["INR", "USD"],
       default: "INR",
     },
 
