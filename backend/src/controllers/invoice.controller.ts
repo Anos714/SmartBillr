@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { invoiceSchema } from "../schemas/invoice.schema";
 import { Invoice } from "../models/invoice.model";
+import { success } from "zod";
 
 interface ItemInput {
   name: string;
@@ -51,6 +52,16 @@ export const calculateInvoiceTotals = (items: ItemInput[], discount = 0) => {
   };
 };
 
+export const generateInvoiceNumber = () => {
+  const prefix = "INV";
+  const date = new Date();
+  const year = date.getFullYear();
+  const randomPart = Math.floor(Math.random() * 999) + 100;
+  const suffix = Date.now().toString().slice(6);
+
+  return `${prefix}-${year}-${randomPart}${suffix}`;
+};
+
 export const createInvoiceHandler = async (req: Request, res: Response) => {
   const { sub } = req.user;
 
@@ -71,10 +82,14 @@ export const createInvoiceHandler = async (req: Request, res: Response) => {
       payload.discount,
     );
 
+    const invoiceNum =payload.invoiceNumber|| generateInvoiceNumber();
+
     const invoice = await Invoice.create({
       userId: sub,
+
       ...payload,
       ...calculatedData,
+      invoiceNumber: invoiceNum,
     });
 
     return res.status(201).json({
@@ -98,3 +113,23 @@ export const createInvoiceHandler = async (req: Request, res: Response) => {
     });
   }
 };
+
+// export const getAllInvoices = async (req: Request, res: Response) => {
+//   const { sub } = req.user;
+//   const page=0;
+//   const limit=;
+//   const skip;
+//   try {
+//     const invoices = await Invoice.find({ userId: sub });
+//     return res.status(200).json({
+//       success: true,
+//       data: invoices,
+//     });
+//   } catch (error) {
+//     return res.status(500).json({
+//       success: false,
+//       message: "Internal server error",
+//       error,
+//     });
+//   }
+// };

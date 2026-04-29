@@ -83,8 +83,6 @@ export interface IInvoice {
 
   paymentInfo?: IPayment;
 
-  paidAt?: Date;
-  sentAt?: Date;
   isDeleted: boolean;
 }
 
@@ -261,9 +259,6 @@ const InvoiceSchema = new Schema<IInvoice>(
       type: PaymentSchema,
     },
 
-    // 🔹 TRACKING
-    paidAt: Date,
-    sentAt: Date,
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true },
