@@ -4,12 +4,14 @@ import {
   createInvoiceHandler,
   getAllInvoices,
   getInvoiceById,
+  updateInvoiceById,
 } from "../controllers/invoice.controller";
 
 const router = Router();
 
-router.post("/create-invoice", isUserAuthenticated, createInvoiceHandler);
-router.get("/invoices", isUserAuthenticated, getAllInvoices);
-router.get("/invoice/:id", isUserAuthenticated, getInvoiceById);
+router.post("/create", isUserAuthenticated, createInvoiceHandler);
+router.get("/all", isUserAuthenticated, getAllInvoices);
+router.get("/:id", isUserAuthenticated, getInvoiceById);
+router.put("/update/:id", isUserAuthenticated, updateInvoiceById);
 
 export default router;

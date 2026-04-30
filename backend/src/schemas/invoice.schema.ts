@@ -87,3 +87,97 @@ export const invoiceSchema = z
   });
 
 export type InvoiceSchemaReq = z.infer<typeof invoiceSchema>;
+
+export const updateInvoiceSchema = z
+  .object({
+    invoiceNumber: z
+      .string()
+      .trim()
+      .min(1)
+      .max(50)
+      .regex(/^[A-Z0-9\-\/]+$/i)
+      .optional(),
+
+    issueDate: z.coerce.date().optional(),
+
+    dueDate: z.coerce.date().optional(),
+
+    status: z.enum(["draft", "sent", "paid", "overdue"]).optional(),
+
+    currency: z.string().trim().min(1).optional(),
+
+    notes: z.string().max(1000).optional(),
+
+    terms: z.string().max(1000).optional(),
+
+    discount: z.number().min(0).optional(),
+
+    business: z
+      .object({
+        name: z.string().trim().min(1),
+        email: z.string().email().optional(),
+        phone: z.string().optional(),
+        address: z.string().optional(),
+        logoURL: z.string().url().optional(),
+        stampURL: z.string().url().optional(),
+        signURL: z.string().url().optional(),
+        gstNumber: z.string().optional(),
+        ownerName: z.string().optional(),
+        ownerDesignation: z.string().optional(),
+      })
+      .partial()
+      .optional(),
+
+    client: z
+      .object({
+        name: z.string().trim().min(1),
+        email: z.string().email().optional(),
+        phone: z.string().optional(),
+        address: z.string().optional(),
+        gstNumber: z.string().optional(),
+      })
+      .partial()
+      .optional(),
+
+    items: z
+      .array(
+        z.object({
+          name: z.string().trim().min(1),
+          description: z.string().optional(),
+          quantity: z.number().min(1),
+          price: z.number().min(0),
+          tax: z.number().min(0).default(0),
+        }),
+      )
+      .min(1)
+      .optional(),
+
+    paymentInfo: z
+      .object({
+        paymentMethod: z.enum(["cash", "bank", "upi", "card"]).optional(),
+
+        paymentDetails: z
+          .object({
+            bankName: z.string().optional(),
+            accountNumber: z.string().optional(),
+            ifsc: z.string().optional(),
+            upiId: z.string().optional(),
+          })
+          .optional(),
+      })
+      .optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.issueDate && data.dueDate) {
+        return data.dueDate >= data.issueDate;
+      }
+      return true;
+    },
+    {
+      message: "Due date cannot be before issue date",
+      path: ["dueDate"],
+    },
+  );
+
+export type UpdateInvoiceReq = z.infer<typeof updateInvoiceSchema>;

@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { invoiceSchema } from "../schemas/invoice.schema";
+import { invoiceSchema, updateInvoiceSchema } from "../schemas/invoice.schema";
 import { IInvoice, Invoice, InvoiceStatus } from "../models/invoice.model";
 import mongoose, { QueryFilter, SortOrder } from "mongoose";
 import { success } from "zod";
@@ -272,7 +272,7 @@ export const updateInvoiceById = async (
       });
     }
 
-    const result = invoiceSchema.safeParse(req.body);
+    const result = updateInvoiceSchema.safeParse(req.body);
 
     if (!result.success) {
       return res.status(422).json({
@@ -283,10 +283,14 @@ export const updateInvoiceById = async (
 
     const payload = result.data;
 
-    const calculatedData = calculateInvoiceTotals(
-      payload.items,
-      payload.discount,
-    );
+    let calculatedData = {};
+
+    if (payload.items) {
+      calculatedData = calculateInvoiceTotals(
+        payload.items,
+        payload.discount ?? 0,
+      );
+    }
 
     const invoiceNum = payload.invoiceNumber || generateInvoiceNumber();
 
@@ -302,7 +306,7 @@ export const updateInvoiceById = async (
         invoiceNumber: invoiceNum,
       },
       {
-        new: true,
+        returnDocument: "after",
         runValidators: true,
       },
     )
