@@ -2,7 +2,7 @@ import { Document, Schema, model } from "mongoose";
 
 interface IUser extends Document {
   provider: "google" | "local";
-  googleId?: string;
+  googleId?: string | undefined;
   fullName: string;
   email: string;
   password: string;
@@ -24,7 +24,7 @@ const UserSchema = new Schema<IUser>(
     provider: { type: String, enum: ["google", "local"], default: "local" },
     googleId: {
       type: String,
-      unique: true,
+      default: undefined,
     },
 
     fullName: {
@@ -70,5 +70,15 @@ UserSchema.index({
   emailVerifyToken: 1,
   emailVerifyTokenExpiry: 1,
 });
+
+UserSchema.index(
+  { googleId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      googleId: { $type: "string" },
+    },
+  },
+);
 
 export const User = model("User", UserSchema);

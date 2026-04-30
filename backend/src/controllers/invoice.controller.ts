@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
 import { invoiceSchema } from "../schemas/invoice.schema";
 import { IInvoice, Invoice, InvoiceStatus } from "../models/invoice.model";
-import { QueryFilter, SortOrder } from "mongoose";
+import mongoose, { QueryFilter, SortOrder } from "mongoose";
+import { success } from "zod";
 
 interface ItemInput {
   name: string;
@@ -193,7 +194,139 @@ export const getAllInvoices = async (req: Request, res: Response) => {
 };
 
 export const getInvoiceById = async (req: Request, res: Response) => {
-  const{}
   try {
-  } catch (error) {}
+    if (!req.user?.sub) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const invoiceId = req.params.id;
+
+    if (!invoiceId || Array.isArray(invoiceId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invoice id is missing",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(invoiceId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid invoice id",
+      });
+    }
+
+    const invoice = await Invoice.findOne({
+      userId: req.user.sub,
+      _id: invoiceId,
+      isDeleted: false,
+    })
+      .select("-__v")
+      .lean();
+
+    if (!invoice) {
+      return res.status(404).json({
+        success: false,
+        message: "Invoice not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: invoice,
+    });
+  } catch (error) {
+    console.error("Get invoice by id error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+type InvoiceParams = {
+  id: string;
+};
+
+export const updateInvoiceById = async (
+  req: Request<InvoiceParams>,
+  res: Response,
+) => {
+  try {
+    if (!req.user?.sub) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const invoiceId = req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(invoiceId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid invoice id",
+      });
+    }
+
+    const result = invoiceSchema.safeParse(req.body);
+
+    if (!result.success) {
+      return res.status(422).json({
+        success: false,
+        message: "Validation failed",
+      });
+    }
+
+    const payload = result.data;
+
+    const calculatedData = calculateInvoiceTotals(
+      payload.items,
+      payload.discount,
+    );
+
+    const invoiceNum = payload.invoiceNumber || generateInvoiceNumber();
+
+    const updatedInvoice = await Invoice.findOneAndUpdate(
+      {
+        _id: invoiceId,
+        userId: req.user.sub,
+        isDeleted: false,
+      },
+      {
+        ...payload,
+        ...calculatedData,
+        invoiceNumber: invoiceNum,
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    )
+      .select("-__v")
+      .lean();
+
+    if (!updatedInvoice) {
+      return res.status(404).json({
+        success: false,
+        message: "Invoice not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Invoice updated successfully",
+      data: updatedInvoice,
+    });
+  } catch (error) {
+    console.error("Update invoice by id error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
 };
