@@ -3,6 +3,7 @@ import { invoiceSchema, updateInvoiceSchema } from "../schemas/invoice.schema";
 import { IInvoice, Invoice, InvoiceStatus } from "../models/invoice.model";
 import mongoose, { QueryFilter, SortOrder } from "mongoose";
 import { success } from "zod";
+import { subscribe } from "node:diagnostics_channel";
 
 interface ItemInput {
   name: string;
@@ -327,6 +328,63 @@ export const updateInvoiceById = async (
     });
   } catch (error) {
     console.error("Update invoice by id error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+export const deleteInvoiceById = async (
+  req: Request<InvoiceParams>,
+  res: Response,
+) => {
+  try {
+    if (!req.user?.sub) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const invoiceId = req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(invoiceId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid invoice id",
+      });
+    }
+
+    const deletedInvoice = await Invoice.findOneAndUpdate(
+      {
+        _id: invoiceId,
+        userId: req.user.sub,
+        isDeleted: false,
+      },
+      { isDeleted: true },
+      {
+        returnDocument: "after",
+        runValidators: true,
+      },
+    )
+      .select("-__v")
+      .lean();
+
+    if (!deletedInvoice) {
+      return res.status(404).json({
+        success: false,
+        message: "Invoice not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Invoice deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete invoice by id error:", error);
 
     return res.status(500).json({
       success: false,
