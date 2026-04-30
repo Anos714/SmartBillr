@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { invoiceSchema } from "../schemas/invoice.schema";
-import { Invoice } from "../models/invoice.model";
-import { success } from "zod";
+import { IInvoice, Invoice, InvoiceStatus } from "../models/invoice.model";
+import { QueryFilter, SortOrder } from "mongoose";
 
 interface ItemInput {
   name: string;
@@ -70,7 +70,6 @@ export const createInvoiceHandler = async (req: Request, res: Response) => {
     return res.status(422).json({
       success: false,
       message: "Validation failed",
-      errors: result.error.flatten(),
     });
   }
 
@@ -82,7 +81,7 @@ export const createInvoiceHandler = async (req: Request, res: Response) => {
       payload.discount,
     );
 
-    const invoiceNum =payload.invoiceNumber|| generateInvoiceNumber();
+    const invoiceNum = payload.invoiceNumber || generateInvoiceNumber();
 
     const invoice = await Invoice.create({
       userId: sub,
@@ -114,22 +113,87 @@ export const createInvoiceHandler = async (req: Request, res: Response) => {
   }
 };
 
-// export const getAllInvoices = async (req: Request, res: Response) => {
-//   const { sub } = req.user;
-//   const page=0;
-//   const limit=;
-//   const skip;
-//   try {
-//     const invoices = await Invoice.find({ userId: sub });
-//     return res.status(200).json({
-//       success: true,
-//       data: invoices,
-//     });
-//   } catch (error) {
-//     return res.status(500).json({
-//       success: false,
-//       message: "Internal server error",
-//       error,
-//     });
-//   }
-// };
+const allowedStatuses: InvoiceStatus[] = ["draft", "sent", "paid", "overdue"];
+
+export const getAllInvoices = async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.sub) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const { sub } = req.user;
+    const { page = "1", limit = "10", status, search } = req.query;
+
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, Number(limit) || 10));
+    const skip = (pageNum - 1) * limitNum;
+
+    const query: QueryFilter<IInvoice> = {
+      userId: sub,
+      isDeleted: false,
+    };
+
+    if (status) {
+      const statusValue = String(status);
+
+      if (!allowedStatuses.includes(statusValue as InvoiceStatus)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid invoice status",
+        });
+      }
+
+      query.status = statusValue;
+    }
+
+    const searchText = typeof search === "string" ? search.trim() : "";
+
+    if (searchText) {
+      query.$text = { $search: searchText };
+    }
+
+    const projection = searchText ? { score: { $meta: "textScore" } } : {};
+
+    const sort: Record<string, SortOrder | { $meta: any }> = searchText
+      ? { score: { $meta: "textScore" } }
+      : { createdAt: -1 };
+
+    const [invoices, total] = await Promise.all([
+      Invoice.find(query, projection)
+        .sort(sort)
+        .skip(skip)
+        .limit(limitNum)
+        .select("-__v")
+        .lean(),
+
+      Invoice.countDocuments(query),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: invoices,
+      pagination: {
+        total,
+        page: pageNum,
+        limit: limitNum,
+        pages: Math.ceil(total / limitNum),
+      },
+    });
+  } catch (error) {
+    console.error("Get invoices error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+export const getInvoiceById = async (req: Request, res: Response) => {
+  const{}
+  try {
+  } catch (error) {}
+};

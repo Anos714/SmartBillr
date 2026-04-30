@@ -264,11 +264,32 @@ const InvoiceSchema = new Schema<IInvoice>(
   { timestamps: true },
 );
 
-//  UNIQUE INDEX (per user)
+//  indexes
+
+InvoiceSchema.index({ userId: 1, isDeleted: 1, createdAt: -1 });
+InvoiceSchema.index({ userId: 1, isDeleted: 1, status: 1 });
+InvoiceSchema.index({ userId: 1, isDeleted: 1, dueDate: 1 });
+
 InvoiceSchema.index({ userId: 1, invoiceNumber: 1 }, { unique: true });
-InvoiceSchema.index({ userId: 1, createdAt: -1 });
-InvoiceSchema.index({ userId: 1, status: 1 });
-InvoiceSchema.index({ userId: 1, dueDate: 1 });
-InvoiceSchema.index({ userId: 1, _id: -1 });
+
+InvoiceSchema.index(
+  {
+    invoiceNumber: "text",
+    "client.name": "text",
+    "business.name": "text",
+    "items.name": "text",
+    "client.email": "text",
+  },
+  {
+    weights: {
+      invoiceNumber: 10,
+      "client.name": 5,
+      "business.name": 3,
+      "items.name": 2,
+      "client.email": 2,
+    },
+    name: "InvoiceTextSearch",
+  },
+);
 
 export const Invoice = model("Invoice", InvoiceSchema);
