@@ -88,12 +88,12 @@ export interface IInvoice {
 
 interface IImage {
   url: string;
-  fileId: string;
+  publicId: string;
 }
 
 const imageSchema = new Schema<IImage>({
   url: String,
-  fileId: String,
+  publicId: String,
 });
 
 const BusinessSchema = new Schema<IBusiness>(
