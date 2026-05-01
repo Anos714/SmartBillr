@@ -21,4 +21,7 @@ export const envSchema = z.object({
 
   //google secrets key
   GOOGLE_CLIENT_ID: z.string(),
+
+  //imagekit key secrets
+  IMAGEKIT_PRIVATE_KEY: z.string(),
 });

@@ -86,15 +86,34 @@ export interface IInvoice {
   isDeleted: boolean;
 }
 
+interface IImage {
+  url: string;
+  fileId: string;
+}
+
+const imageSchema = new Schema<IImage>({
+  url: String,
+  fileId: String,
+});
+
 const BusinessSchema = new Schema<IBusiness>(
   {
     name: { type: String, required: true },
     email: String,
     phone: String,
     address: String,
-    logoURL: String,
-    stampURL: String,
-    signURL: String,
+    logoURL: {
+      type: imageSchema,
+      default: null,
+    },
+    stampURL: {
+      type: imageSchema,
+      default: null,
+    },
+    signURL: {
+      type: imageSchema,
+      default: null,
+    },
     gstNumber: String,
     ownerName: String,
     ownerDesignation: String,
