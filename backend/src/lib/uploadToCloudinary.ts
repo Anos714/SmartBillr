@@ -7,7 +7,7 @@ export type CloudinaryUploadResult = {
 
 export const uploadToCloudinary = async (
   file: Express.Multer.File,
-  folder = "invoices",
+  folder = "smartbillr/business-assets",
 ): Promise<CloudinaryUploadResult> => {
   const base64File = `data:${file.mimetype};base64,${file.buffer.toString(
     "base64",
@@ -22,7 +22,7 @@ export const uploadToCloudinary = async (
         width: 800,
         crop: "limit",
         quality: "auto",
-        format: "avif", //avif format
+        format: "webp", //avif format
       },
     ],
   });

@@ -1,19 +1,5 @@
 import { Schema, Types, model } from "mongoose";
-
-// 🔹 BUSINESS
-export interface IBusiness {
-  name: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  logoURL?: string;
-  stampURL?: string;
-  signURL?: string;
-  gstNumber?: string;
-  ownerName?: string;
-  ownerDesignation?: string;
-  defaultTax?: number;
-}
+import { IBusiness } from "./business.model";
 
 // 🔹 CLIENT
 export interface IClient {
@@ -86,41 +72,31 @@ export interface IInvoice {
   isDeleted: boolean;
 }
 
-interface IImage {
-  url: string;
-  publicId: string;
-}
-
-const imageSchema = new Schema<IImage>({
-  url: String,
-  publicId: String,
-});
-
-const BusinessSchema = new Schema<IBusiness>(
-  {
-    name: { type: String, required: true },
-    email: String,
-    phone: String,
-    address: String,
-    logoURL: {
-      type: imageSchema,
-      default: null,
-    },
-    stampURL: {
-      type: imageSchema,
-      default: null,
-    },
-    signURL: {
-      type: imageSchema,
-      default: null,
-    },
-    gstNumber: String,
-    ownerName: String,
-    ownerDesignation: String,
-    defaultTax: { type: Number, default: 18 },
-  },
-  { _id: false },
-);
+// const BusinessSchema = new Schema<IBusiness>(
+//   {
+//     name: { type: String, required: true },
+//     email: String,
+//     phone: String,
+//     address: String,
+//     logoURL: {
+//       type: imageSchema,
+//       default: null,
+//     },
+//     stampURL: {
+//       type: imageSchema,
+//       default: null,
+//     },
+//     signURL: {
+//       type: imageSchema,
+//       default: null,
+//     },
+//     gstNumber: String,
+//     ownerName: String,
+//     ownerDesignation: String,
+//     defaultTax: { type: Number, default: 18 },
+//   },
+//   { _id: false },
+// );
 
 const ClientSchema = new Schema<IClient>(
   {
@@ -193,7 +169,8 @@ const InvoiceSchema = new Schema<IInvoice>(
 
     // 🔹 SNAPSHOT DATA
     business: {
-      type: BusinessSchema,
+      type: Schema.Types.ObjectId,
+      ref: "Business",
       required: true,
     },
 
