@@ -114,6 +114,7 @@ function EditorInner() {
     updateAdjustment,
     removeAdjustment,
     saveAsDefault,
+    rehydrate,
   } = useGuestStore();
   const [locked, setLocked] = useState<TemplateMeta | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -130,8 +131,10 @@ function EditorInner() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    rehydrate();
     const id = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -177,9 +180,10 @@ function EditorInner() {
   const PdfDocument = template.PdfDocument;
   const Preview = template.Preview;
 
-  const savedLabel = updatedAt
-    ? new Date(updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    : "--:--";
+  const savedLabel =
+    mounted && updatedAt
+      ? new Date(updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      : "--:--";
 
   const displayNo = invoiceDisplayNo({
     prefix: invoice.prefix ?? "",
@@ -450,7 +454,25 @@ function EditorInner() {
       actions={actions}
       backHref="/templates"
     >
-      <div className="grid items-start gap-5 pb-24 lg:grid-cols-[400px_minmax(0,1fr)] lg:pb-0">
+      {(errorsOpen || downloadOpen) ? (
+        <button
+          type="button"
+          aria-label="Close menu"
+          onClick={() => {
+            setErrorsOpen(false);
+            setDownloadOpen(false);
+          }}
+          className="fixed inset-0 z-30 cursor-default bg-transparent"
+        />
+      ) : null}
+      <div
+        className={cn(
+          "grid items-start gap-5 pb-24 lg:pb-0",
+          view === "preview"
+            ? "mx-auto w-full max-w-[860px]"
+            : "lg:grid-cols-[400px_minmax(0,1fr)]",
+        )}
+      >
         {/* Left: form column */}
         <div className={cn("min-w-0 space-y-4", view === "preview" && "hidden")}>
           {/* Invoice Template selects row */}
