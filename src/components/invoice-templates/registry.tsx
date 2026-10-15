@@ -3,6 +3,12 @@ import { MinimalWhitePreview, type TemplateProps } from "./minimal-white";
 import { MinimalWhitePdfDocument } from "./minimal-white-pdf";
 import { FreelancerPopPreview } from "./freelancer-pop";
 import { FreelancerPopPdfDocument } from "./freelancer-pop-pdf";
+import { CorporateProPreview } from "./corporate-pro";
+import { CorporateProPdfDocument } from "./corporate-pro-pdf";
+import { BoldDarkPreview } from "./bold-dark";
+import { BoldDarkPdfDocument } from "./bold-dark-pdf";
+import { PastelCreativePreview } from "./pastel-creative";
+import { PastelCreativePdfDocument } from "./pastel-creative-pdf";
 
 export type TemplateEntry = {
   meta: TemplateMeta;
@@ -11,9 +17,10 @@ export type TemplateEntry = {
   PdfDocument: (props: TemplateProps) => any;
 };
 
-// Only 2 templates are implemented in this step; the remaining 6 catalog
+// 5 templates are implemented; the remaining 3 catalog
 // entries fall back to Minimal White for preview + PDF until their
-// dedicated templates land.
+// dedicated templates land (gst-tax-invoice-india, ecommerce-packing,
+// consulting-retainer).
 const entries: Record<string, TemplateEntry> = {
   "minimal-white": {
     meta: TEMPLATE_CATALOG.find((t) => t.id === "minimal-white")!,
@@ -24,6 +31,21 @@ const entries: Record<string, TemplateEntry> = {
     meta: TEMPLATE_CATALOG.find((t) => t.id === "freelancer-pop")!,
     Preview: FreelancerPopPreview,
     PdfDocument: FreelancerPopPdfDocument,
+  },
+  "corporate-pro": {
+    meta: TEMPLATE_CATALOG.find((t) => t.id === "corporate-pro")!,
+    Preview: CorporateProPreview,
+    PdfDocument: CorporateProPdfDocument,
+  },
+  "bold-dark": {
+    meta: TEMPLATE_CATALOG.find((t) => t.id === "bold-dark")!,
+    Preview: BoldDarkPreview,
+    PdfDocument: BoldDarkPdfDocument,
+  },
+  "pastel-creative": {
+    meta: TEMPLATE_CATALOG.find((t) => t.id === "pastel-creative")!,
+    Preview: PastelCreativePreview,
+    PdfDocument: PastelCreativePdfDocument,
   },
 };
 
