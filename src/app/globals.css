@@ -1,16 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #09090b;
-  --muted: #fafafa;
-  --muted-foreground: #71717a;
-  --border: #e4e4e7;
-  --primary: #09090b;
-  --primary-foreground: #fafafa;
-  --accent-pro: #4f46e5;
-  --success: #16a34a;
-  --warning: #f59e0b;
+  --background: #f7f5f0;
+  --foreground: #141412;
+  --muted: #efe9dc;
+  --muted-foreground: #6b675e;
+  --border: #e7e2d8;
+  --card: #fffdf8;
+  --card-foreground: #141412;
+  --primary: #0c6b4f;
+  --primary-foreground: #f7f5f0;
+  --accent-lime: #d9f452;
+  --accent-pro: #0c6b4f;
+  --ink: #141412;
+  --paper: #f7f5f0;
+  --dark: #101210;
+  --dark-foreground: #f7f5f0;
+  --success: #0c6b4f;
+  --warning: #d97706;
   --destructive: #dc2626;
   --radius: 0.75rem;
 }
@@ -21,14 +28,22 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-accent-lime: var(--accent-lime);
   --color-accent-pro: var(--accent-pro);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-dark: var(--dark);
+  --color-dark-foreground: var(--dark-foreground);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-destructive: var(--destructive);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-display);
   --radius-xl: var(--radius);
 }
 
@@ -37,4 +52,77 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Inter, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Paper grain / dot texture */
+.paper-texture {
+  background-image: radial-gradient(#14141214 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.paper-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: radial-gradient(#1414120d 1px, transparent 1.5px);
+  background-size: 18px 18px;
+}
+
+/* Marquee */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 28s linear infinite;
+}
+
+/* Floating badges */
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-floaty {
+  animation: floaty 5s ease-in-out infinite;
+}
+
+.animate-floaty-slow {
+  animation: floaty 7s ease-in-out infinite;
+}
+
+/* Lime underline draw */
+@keyframes draw-stroke {
+  from {
+    stroke-dashoffset: 320;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-draw-stroke {
+  stroke-dasharray: 320;
+  animation: draw-stroke 1.4s ease-out 0.6s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-floaty,
+  .animate-floaty-slow,
+  .animate-draw-stroke {
+    animation: none;
+  }
 }

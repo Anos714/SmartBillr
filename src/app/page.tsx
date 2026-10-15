@@ -1,15 +1,22 @@
-import {
-  ArrowRight,
-  Check,
-  Infinity as InfinityIcon,
-  Lock,
-  ShieldCheck,
-  Sparkles,
-  Star,
-  Zap,
-} from "lucide-react";
+"use client";
 
-import { buttonVariants } from "@/components/ui/button";
+import { useState } from "react";
+import { motion } from "motion/react";
+
+import { Wordmark } from "@/components/Brand";
+import {
+  ArrowRightIcon,
+  BoltIcon,
+  ChartIcon,
+  CheckIcon,
+  InvoiceIcon,
+  LockIcon,
+  PaletteIcon,
+  ShieldIcon,
+  SparklesIcon,
+  StarIcon,
+  TemplatesIcon,
+} from "@/components/icons";
 import { FREE_COUNT, TEMPLATE_CATALOG } from "@/lib/templates";
 import { cn } from "@/lib/utils";
 
@@ -49,18 +56,8 @@ const softwareJsonLd = {
   description:
     "Free invoice generator for freelancers and Indian businesses. GST-ready invoices, 2 free templates, no signup needed for basics.",
   offers: [
-    {
-      "@type": "Offer",
-      name: "Free",
-      price: "0",
-      priceCurrency: "INR",
-    },
-    {
-      "@type": "Offer",
-      name: "Pro",
-      price: "999",
-      priceCurrency: "INR",
-    },
+    { "@type": "Offer", name: "Free", price: "0", priceCurrency: "INR" },
+    { "@type": "Offer", name: "Pro", price: "999", priceCurrency: "INR" },
   ],
   aggregateRating: {
     "@type": "AggregateRating",
@@ -81,17 +78,17 @@ const faqJsonLd = {
 
 const FEATURES = [
   {
-    icon: Sparkles,
+    icon: PaletteIcon,
     title: "Beautiful by default",
     body: "Eight designer-crafted templates with real typography, spacing, and color — invoices clients actually enjoy opening.",
   },
   {
-    icon: InfinityIcon,
+    icon: InvoiceIcon,
     title: "Free forever basics",
     body: "Two full templates, unlimited invoices, and PDF downloads. No trial, no card, no catch — free means free.",
   },
   {
-    icon: ShieldCheck,
+    icon: ShieldIcon,
     title: "Safe & private",
     body: "Work as a guest without an account. Your data stays yours — nothing stored unless you ask us to.",
   },
@@ -118,9 +115,55 @@ const TESTIMONIALS = [
   },
 ];
 
+const MARQUEE_ITEMS = [
+  "GST-ready",
+  "No signup",
+  "2 free templates",
+  "PDF in one click",
+  "UPI-friendly totals",
+  "Watermark-free Pro",
+  "Made for India",
+];
+
+const reveal = {
+  initial: { opacity: 0, y: 24 },
+  whileInView: { opacity: 1, y: 0 },
+};
+
+function FaqItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="overflow-hidden rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8]">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left font-medium"
+      >
+        <span>{q}</span>
+        <motion.span
+          animate={{ rotate: open ? 45 : 0 }}
+          transition={{ duration: 0.2 }}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0C6B4F] text-xl leading-none text-[#D9F452]"
+        >
+          +
+        </motion.span>
+      </button>
+      <motion.div
+        initial={false}
+        animate={{ height: open ? "auto" : 0, opacity: open ? 1 : 0 }}
+        transition={{ duration: 0.28, ease: "easeInOut" }}
+        className="overflow-hidden"
+      >
+        <p className="px-5 pb-5 text-sm leading-6 text-[#6B675E]">{a}</p>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function Home() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="relative min-h-screen bg-[#F7F5F0] text-[#141412]">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }}
@@ -130,217 +173,313 @@ export default function Home() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
 
-      {/* Navbar */}
-      <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
-        <nav
-          aria-label="Main"
-          className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6"
+      {/* Navbar — floating dark pill */}
+      <div className="fixed inset-x-0 top-4 z-50 px-4">
+        <motion.header
+          initial={{ opacity: 0, y: -16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="mx-auto flex h-14 max-w-4xl items-center justify-between rounded-full bg-[#101210] py-2 pr-2 pl-5 text-[#F7F5F0] shadow-xl"
         >
-          <a href="#" className="flex items-center gap-2 font-bold text-lg">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <Zap className="h-4 w-4" aria-hidden />
-            </span>
-            SmartBillr
+          <a href="#" aria-label="SmartBillr home" className="text-[#F7F5F0]">
+            <Wordmark size={28} />
           </a>
-          <div className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
-            <a href="#features" className="transition-colors hover:text-foreground">
+          <nav aria-label="Main" className="hidden items-center gap-7 text-sm text-white/70 md:flex">
+            <a href="#features" className="transition-colors hover:text-[#D9F452]">
               Features
             </a>
-            <a href="#templates" className="transition-colors hover:text-foreground">
+            <a href="#templates" className="transition-colors hover:text-[#D9F452]">
               Templates
             </a>
-            <a href="#pricing" className="transition-colors hover:text-foreground">
+            <a href="#pricing" className="transition-colors hover:text-[#D9F452]">
               Pricing
             </a>
-          </div>
+          </nav>
           <div className="flex items-center gap-2">
             <a
               href="/create/invoice"
-              className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
+              className="hidden rounded-full px-4 py-2 text-sm text-white/80 transition-colors hover:text-white sm:block"
             >
               Sign In
             </a>
-            <a
+            <motion.a
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
               href="/create/invoice"
-              className={cn(buttonVariants({ variant: "default", size: "sm" }))}
+              className="rounded-full bg-[#D9F452] px-5 py-2.5 text-sm font-semibold text-[#101210]"
             >
               Start Free
-            </a>
+            </motion.a>
           </div>
-        </nav>
-      </header>
+        </motion.header>
+      </div>
 
-      <main>
+      <main className="paper-texture relative">
         {/* Hero */}
-        <section className="mx-auto max-w-6xl px-4 pt-16 pb-12 text-center sm:px-6 sm:pt-24">
-          <p className="mx-auto inline-flex items-center gap-2 rounded-full border border-border bg-muted px-4 py-1.5 text-xs font-medium text-muted-foreground">
-            <Sparkles className="h-3.5 w-3.5" aria-hidden />
+        <section className="relative mx-auto max-w-6xl overflow-hidden px-4 pt-32 pb-12 text-center sm:px-6 sm:pt-40">
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="mx-auto inline-flex items-center gap-2 rounded-full border border-[#E7E2D8] bg-[#FFFDF8] px-4 py-1.5 text-xs font-medium text-[#6B675E]"
+          >
+            <SparklesIcon size={14} className="text-[#0C6B4F]" />
             GST-ready for India + Global
-          </p>
-          <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-extrabold tracking-tight text-balance sm:text-6xl">
-            Create Beautiful Invoices
-            <span className="block text-muted-foreground">Not Ugly Ones</span>
-          </h1>
-          <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
+          </motion.p>
+          <motion.h1
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="mx-auto mt-6 max-w-3xl text-5xl leading-[1.05] tracking-tight text-balance sm:text-7xl"
+            style={{ fontFamily: "var(--font-display), Georgia, serif" }}
+          >
+            Invoices clients{" "}
+            <span className="relative inline-block italic">
+              love
+              <svg
+                viewBox="0 0 220 22"
+                aria-hidden
+                className="absolute -bottom-2 left-0 w-full"
+                preserveAspectRatio="none"
+              >
+                <path
+                  d="M4 16 C 60 6, 160 6, 216 12"
+                  fill="none"
+                  stroke="#D9F452"
+                  strokeWidth="9"
+                  strokeLinecap="round"
+                  className="animate-draw-stroke"
+                />
+              </svg>
+            </span>{" "}
+            to pay
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.22 }}
+            className="mx-auto mt-6 max-w-xl text-lg text-[#6B675E]"
+          >
             Free for basics, Pro for premium. Invoices your clients will love to
             pay — in under two minutes.
-          </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <a
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.34 }}
+            className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row"
+          >
+            <motion.a
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
               href="/create/invoice"
-              className={cn(buttonVariants({ variant: "default", size: "lg" }))}
+              className="inline-flex h-13 items-center gap-2 rounded-full bg-[#0C6B4F] px-8 py-3.5 text-base font-semibold text-white transition-colors hover:bg-[#0a5a42]"
             >
               Start Free — No Signup
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </a>
-            <a
+              <ArrowRightIcon size={18} />
+            </motion.a>
+            <motion.a
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
               href="#templates"
-              className={cn(buttonVariants({ variant: "secondary", size: "lg" }))}
+              className="inline-flex items-center gap-2 rounded-full border border-[#E7E2D8] bg-[#FFFDF8] px-8 py-3.5 text-base font-semibold transition-colors hover:bg-[#EFE9DC]"
             >
               View Templates
-            </a>
-          </div>
+            </motion.a>
+          </motion.div>
 
-          {/* App preview mockup (pure CSS, no images) */}
-          <div
-            className="mx-auto mt-14 max-w-3xl overflow-hidden rounded-xl border border-border bg-card text-left shadow-xl"
-            role="img"
-            aria-label="Preview of a SmartBillr invoice"
+          {/* Invoice mockup */}
+          <motion.div
+            initial={{ opacity: 0, y: 48, rotate: -2 }}
+            animate={{ opacity: 1, y: 0, rotate: -1.5 }}
+            transition={{ duration: 0.8, delay: 0.45 }}
+            className="relative mx-auto mt-16 max-w-3xl"
           >
-            <div className="flex items-center gap-1.5 border-b border-border bg-muted px-4 py-3">
-              <span className="h-2.5 w-2.5 rounded-full bg-border" />
-              <span className="h-2.5 w-2.5 rounded-full bg-border" />
-              <span className="h-2.5 w-2.5 rounded-full bg-border" />
-              <span className="ml-3 hidden h-5 flex-1 rounded-md bg-background sm:block" />
-            </div>
-            <div className="space-y-4 p-6 sm:p-8" aria-hidden>
-              <div className="flex items-start justify-between">
+            <div
+              className="overflow-hidden rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] text-left shadow-2xl"
+              role="img"
+              aria-label="Preview of a SmartBillr invoice"
+            >
+              <div className="flex items-center gap-1.5 border-b border-[#E7E2D8] bg-[#EFE9DC] px-4 py-3">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#0C6B4F]/40" />
+                <span className="h-2.5 w-2.5 rounded-full bg-[#0C6B4F]/25" />
+                <span className="h-2.5 w-2.5 rounded-full bg-[#0C6B4F]/15" />
+                <span className="ml-3 hidden h-5 flex-1 rounded-md bg-[#F7F5F0] sm:block" />
+              </div>
+              <div className="space-y-4 p-6 sm:p-8" aria-hidden>
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <div className="h-5 w-44 rounded-md bg-[#0C6B4F]" />
+                    <div className="h-3 w-28 rounded bg-[#EFE9DC]" />
+                  </div>
+                  <div className="rounded-full bg-[#D9F452] px-3 py-1 text-xs font-bold text-[#101210]">
+                    INV-2026-048
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2 rounded-xl border border-[#E7E2D8] p-3">
+                    <div className="h-3 w-16 rounded bg-[#EFE9DC]" />
+                    <div className="h-3 w-24 rounded bg-[#EFE9DC]" />
+                  </div>
+                  <div className="space-y-2 rounded-xl border border-[#E7E2D8] p-3">
+                    <div className="h-3 w-16 rounded bg-[#EFE9DC]" />
+                    <div className="h-3 w-24 rounded bg-[#EFE9DC]" />
+                  </div>
+                </div>
                 <div className="space-y-2">
-                  <div className="h-5 w-40 rounded-md bg-primary/90" />
-                  <div className="h-3 w-28 rounded bg-muted" />
+                  <div className="h-8 rounded-md bg-[#F7F5F0]" />
+                  <div className="h-8 rounded-md bg-[#F7F5F0]" />
+                  <div className="h-8 rounded-md bg-[#F7F5F0]" />
                 </div>
-                <div className="h-8 w-24 rounded-md bg-muted" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2 rounded-xl border border-border p-3">
-                  <div className="h-3 w-16 rounded bg-muted" />
-                  <div className="h-3 w-24 rounded bg-muted" />
-                </div>
-                <div className="space-y-2 rounded-xl border border-border p-3">
-                  <div className="h-3 w-16 rounded bg-muted" />
-                  <div className="h-3 w-24 rounded bg-muted" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="h-8 rounded-md bg-muted" />
-                <div className="h-8 rounded-md bg-muted" />
-                <div className="h-8 rounded-md bg-muted" />
-              </div>
-              <div className="flex justify-end">
-                <div className="w-44 space-y-2">
-                  <div className="h-3 rounded bg-muted" />
-                  <div className="h-3 rounded bg-muted" />
-                  <div className="h-5 rounded-md bg-primary/90" />
+                <div className="flex justify-end">
+                  <div className="w-44 space-y-2">
+                    <div className="h-3 rounded bg-[#EFE9DC]" />
+                    <div className="h-3 rounded bg-[#EFE9DC]" />
+                    <div className="h-6 rounded-md bg-[#0C6B4F]" />
+                  </div>
                 </div>
               </div>
             </div>
+            <div className="animate-floaty absolute -top-5 -right-3 flex items-center gap-2 rounded-full bg-[#101210] px-4 py-2 text-sm font-semibold text-[#D9F452] shadow-xl sm:-right-8">
+              <CheckIcon size={16} />
+              Paid ✓ ₹48,200
+            </div>
+            <div className="animate-floaty-slow absolute -bottom-5 -left-3 flex items-center gap-2 rounded-full border border-[#E7E2D8] bg-[#FFFDF8] px-4 py-2 text-sm font-semibold text-[#0C6B4F] shadow-xl sm:-left-8">
+              <BoltIcon size={16} />
+              GST-ready
+            </div>
+          </motion.div>
+        </section>
+
+        {/* Marquee strip */}
+        <section aria-label="Highlights" className="overflow-hidden border-y border-[#101210] bg-[#D9F452] py-3">
+          <div className="animate-marquee flex w-max items-center gap-8 pr-8 whitespace-nowrap">
+            {[...MARQUEE_ITEMS, ...MARQUEE_ITEMS].map((item, i) => (
+              <span key={i} className="flex items-center gap-8 text-sm font-bold tracking-wide text-[#101210] uppercase">
+                {item}
+                <BoltIcon size={16} />
+              </span>
+            ))}
           </div>
         </section>
 
         {/* Proof strip */}
-        <section aria-label="Highlights" className="border-y border-border bg-muted/50">
-          <div className="mx-auto flex max-w-6xl flex-col items-center justify-center gap-2 px-4 py-6 text-center text-sm sm:flex-row sm:gap-10 sm:px-6">
-            <p className="font-semibold">2,000+ invoices created</p>
-            <p className="flex items-center gap-1.5 text-muted-foreground">
-              <Check className="h-4 w-4 text-green-600" aria-hidden />
+        <section aria-label="Proof" className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+          <div className="flex flex-col items-center justify-center gap-2 text-center text-sm sm:flex-row sm:gap-10">
+            <p className="font-mono font-semibold">2,000+ invoices created</p>
+            <p className="flex items-center gap-1.5 text-[#6B675E]">
+              <CheckIcon size={16} className="text-[#0C6B4F]" />
               Free forever basics
             </p>
-            <p className="flex items-center gap-1.5 text-muted-foreground">
-              <Check className="h-4 w-4 text-green-600" aria-hidden />
+            <p className="flex items-center gap-1.5 text-[#6B675E]">
+              <CheckIcon size={16} className="text-[#0C6B4F]" />
               No signup needed
             </p>
           </div>
         </section>
 
-        {/* Features */}
+        {/* Features — dark cards */}
         <section id="features" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
-          <h2 className="text-center text-3xl font-bold tracking-tight">
-            Everything you need, nothing you don&apos;t
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-center text-muted-foreground">
-            Built for freelancers and small businesses who would rather be
-            working than wrestling with billing software.
-          </p>
+          <motion.div {...reveal} viewport={{ once: true, margin: "-80px" }}>
+            <h2
+              className="text-center text-4xl tracking-tight sm:text-5xl"
+              style={{ fontFamily: "var(--font-display), Georgia, serif" }}
+            >
+              Everything you need, <em className="text-[#0C6B4F]">nothing</em> you
+              don&apos;t
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-center text-[#6B675E]">
+              Built for freelancers and small businesses who would rather be
+              working than wrestling with billing software.
+            </p>
+          </motion.div>
           <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {FEATURES.map((f) => (
-              <article
+            {FEATURES.map((f, i) => (
+              <motion.article
                 key={f.title}
-                className="rounded-xl border border-border bg-card p-6 shadow-sm"
+                {...reveal}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ delay: i * 0.1, duration: 0.5 }}
+                whileHover={{ y: -6 }}
+                className="rounded-3xl bg-[#101210] p-7 text-[#F7F5F0] shadow-lg"
               >
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                  <f.icon className="h-5 w-5" aria-hidden />
+                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#D9F452] text-[#101210]">
+                  <f.icon size={22} />
                 </span>
-                <h3 className="mt-4 text-lg font-semibold">{f.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{f.body}</p>
-              </article>
+                <h3
+                  className="mt-5 text-xl"
+                  style={{ fontFamily: "var(--font-display), Georgia, serif" }}
+                >
+                  {f.title}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-white/65">{f.body}</p>
+              </motion.article>
             ))}
           </div>
         </section>
 
-        {/* Templates */}
-        <section id="templates" className="border-y border-border bg-muted/50">
+        {/* Templates — dark section */}
+        <section id="templates" className="bg-[#101210] text-[#F7F5F0]">
           <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
-            <h2 className="text-center text-3xl font-bold tracking-tight">
-              Pick a template, make it yours
-            </h2>
-            <p className="mx-auto mt-3 max-w-xl text-center text-muted-foreground">
-              {FREE_COUNT} free forever. Upgrade for the full premium collection.
-            </p>
+            <motion.div {...reveal} viewport={{ once: true, margin: "-80px" }}>
+              <p className="flex items-center justify-center gap-2 text-xs font-bold tracking-widest text-[#D9F452] uppercase">
+                <TemplatesIcon size={16} /> 8 designer templates
+              </p>
+              <h2
+                className="mt-3 text-center text-4xl tracking-tight sm:text-5xl"
+                style={{ fontFamily: "var(--font-display), Georgia, serif" }}
+              >
+                Pick a template, <em className="text-[#D9F452]">make it yours</em>
+              </h2>
+              <p className="mx-auto mt-3 max-w-xl text-center text-white/60">
+                {FREE_COUNT} free forever. Upgrade for the full premium collection.
+              </p>
+            </motion.div>
             <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {TEMPLATE_CATALOG.map((t) => (
-                <article
+              {TEMPLATE_CATALOG.map((t, i) => (
+                <motion.article
                   key={t.id}
-                  className="flex flex-col rounded-xl border border-border bg-card p-5 shadow-sm"
+                  {...reveal}
+                  viewport={{ once: true, margin: "-40px" }}
+                  transition={{ delay: (i % 4) * 0.08, duration: 0.5 }}
+                  whileHover={{ y: -6 }}
+                  className="group flex flex-col rounded-2xl border border-white/10 bg-white/[0.04] p-5 transition-shadow hover:shadow-[0_0_32px_-8px_#D9F45266]"
                 >
                   <div
-                    className="h-28 rounded-xl border border-border"
-                    style={{ background: `linear-gradient(135deg, ${t.accent}26, ${t.accent}08)` }}
+                    className="h-28 rounded-xl border border-white/10"
+                    style={{
+                      background: `linear-gradient(135deg, ${t.accent}55, ${t.accent}14)`,
+                    }}
                     aria-hidden
                   >
                     <div className="space-y-1.5 p-4">
-                      <div
-                        className="h-3 w-2/3 rounded"
-                        style={{ backgroundColor: t.accent }}
-                      />
-                      <div className="h-2 w-1/2 rounded bg-muted" />
-                      <div className="h-2 w-3/4 rounded bg-muted" />
-                      <div className="h-2 w-2/3 rounded bg-muted" />
+                      <div className="h-3 w-2/3 rounded" style={{ backgroundColor: t.accent }} />
+                      <div className="h-2 w-1/2 rounded bg-white/20" />
+                      <div className="h-2 w-3/4 rounded bg-white/20" />
+                      <div className="h-2 w-2/3 rounded bg-white/20" />
                     </div>
                   </div>
                   <div className="mt-4 flex items-center gap-2">
                     {t.isFree ? (
-                      <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
+                      <span className="rounded-full bg-[#D9F452] px-2.5 py-0.5 text-xs font-bold text-[#101210]">
                         FREE
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
-                        <Lock className="h-3 w-3" aria-hidden />
+                      <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-bold text-[#D9F452]">
+                        <LockIcon size={12} />
                         PRO
                       </span>
                     )}
                     <h3 className="text-sm font-semibold">{t.name}</h3>
                   </div>
-                  <p className="mt-1.5 flex-1 text-sm text-muted-foreground">{t.tagline}</p>
+                  <p className="mt-1.5 flex-1 text-sm text-white/55">{t.tagline}</p>
                   <a
                     href={`/create/invoice?template=${t.id}`}
-                    className={cn(
-                      buttonVariants({ variant: "secondary", size: "sm" }),
-                      "mt-4 w-full",
-                    )}
+                    className="mt-4 inline-flex w-full items-center justify-center rounded-full border border-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:border-[#D9F452] hover:text-[#D9F452]"
                   >
                     {t.isFree ? "Use Template" : "Preview"}
                   </a>
-                </article>
+                </motion.article>
               ))}
             </div>
           </div>
@@ -348,93 +487,101 @@ export default function Home() {
 
         {/* Pricing */}
         <section id="pricing" className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-24">
-          <h2 className="text-center text-3xl font-bold tracking-tight">
-            Simple, honest pricing
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-center text-muted-foreground">
-            Start free. Upgrade only when premium templates pay for themselves.
-          </p>
+          <motion.div {...reveal} viewport={{ once: true, margin: "-80px" }}>
+            <h2
+              className="text-center text-4xl tracking-tight sm:text-5xl"
+              style={{ fontFamily: "var(--font-display), Georgia, serif" }}
+            >
+              Simple, <em className="text-[#0C6B4F]">honest</em> pricing
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-center text-[#6B675E]">
+              Start free. Upgrade only when premium templates pay for themselves.
+            </p>
+          </motion.div>
           <div className="mt-10 grid gap-6 md:grid-cols-2">
-            <article className="flex flex-col rounded-xl border border-border bg-card p-8 shadow-sm">
+            <motion.article
+              {...reveal}
+              viewport={{ once: true, margin: "-80px" }}
+              whileHover={{ y: -4 }}
+              className="flex flex-col rounded-3xl border border-[#E7E2D8] bg-[#FFFDF8] p-8 shadow-sm"
+            >
               <h3 className="text-lg font-semibold">Free</h3>
-              <p className="mt-2 text-4xl font-extrabold">
-                ₹0
-                <span className="text-base font-normal text-muted-foreground"> forever</span>
+              <p className="mt-2 font-mono text-4xl font-extrabold">
+                ₹0<span className="font-sans text-base font-normal text-[#6B675E]"> forever</span>
               </p>
               <ul className="mt-6 flex-1 space-y-3 text-sm">
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" aria-hidden />2 free templates
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" aria-hidden />Unlimited invoices
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" aria-hidden />PDF downloads with watermark
-                </li>
+                {["2 free templates", "Unlimited invoices", "PDF downloads with watermark"].map((li) => (
+                  <li key={li} className="flex items-center gap-2">
+                    <CheckIcon size={16} className="text-[#0C6B4F]" /> {li}
+                  </li>
+                ))}
               </ul>
               <a
                 href="/pricing"
-                className={cn(
-                  buttonVariants({ variant: "secondary", size: "lg" }),
-                  "mt-8 w-full",
-                )}
+                className="mt-8 inline-flex w-full items-center justify-center rounded-full border border-[#E7E2D8] bg-[#F7F5F0] px-8 py-3 text-base font-semibold transition-colors hover:bg-[#EFE9DC]"
               >
                 Start Free
               </a>
-            </article>
-            <article className="relative flex flex-col rounded-xl border-2 border-indigo-600 bg-card p-8 shadow-lg">
-              <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-indigo-600 px-4 py-1 text-xs font-semibold text-white">
-                Most popular
+            </motion.article>
+            <motion.article
+              {...reveal}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ delay: 0.1 }}
+              whileHover={{ y: -4 }}
+              className="relative flex flex-col rounded-3xl bg-[#0C6B4F] p-8 text-white shadow-2xl"
+            >
+              <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-[#D9F452] px-4 py-1 text-xs font-bold whitespace-nowrap text-[#101210]">
+                MOST POPULAR
               </span>
               <h3 className="text-lg font-semibold">Pro</h3>
-              <p className="mt-2 text-4xl font-extrabold">
+              <p className="mt-2 font-mono text-4xl font-extrabold">
                 ₹999
-                <span className="text-base font-normal text-muted-foreground">
-                  {" "}lifetime or ₹199/mo
-                </span>
+                <span className="font-sans text-base font-normal text-white/70"> lifetime or ₹199/mo</span>
               </p>
               <ul className="mt-6 flex-1 space-y-3 text-sm">
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" aria-hidden />All 8 templates
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" aria-hidden />No watermark
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" aria-hidden />Custom logo
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" aria-hidden />GST invoice template
-                </li>
+                {["All 8 templates", "No watermark", "Custom logo", "GST invoice template"].map((li) => (
+                  <li key={li} className="flex items-center gap-2">
+                    <CheckIcon size={16} className="text-[#D9F452]" /> {li}
+                  </li>
+                ))}
               </ul>
-              <a
+              <motion.a
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 href="/pricing"
-                className={cn(
-                  buttonVariants({ variant: "default", size: "lg" }),
-                  "mt-8 w-full bg-indigo-600 hover:bg-indigo-700",
-                )}
+                className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#D9F452] px-8 py-3 text-base font-bold text-[#101210] transition-transform"
               >
-                Go Pro
-              </a>
-            </article>
+                Go Pro <ArrowRightIcon size={18} />
+              </motion.a>
+            </motion.article>
           </div>
         </section>
 
         {/* Testimonials */}
-        <section aria-labelledby="testimonials-heading" className="border-y border-border bg-muted/50">
+        <section aria-labelledby="testimonials-heading" className="border-y border-[#E7E2D8] bg-[#EFE9DC]/60">
           <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
-            <h2 id="testimonials-heading" className="text-center text-3xl font-bold tracking-tight">
-              Loved by freelancers across India
-            </h2>
+            <motion.h2
+              id="testimonials-heading"
+              {...reveal}
+              viewport={{ once: true, margin: "-80px" }}
+              className="text-center text-4xl tracking-tight sm:text-5xl"
+              style={{ fontFamily: "var(--font-display), Georgia, serif" }}
+            >
+              Loved by freelancers <em className="text-[#0C6B4F]">across India</em>
+            </motion.h2>
             <div className="mt-10 grid gap-6 md:grid-cols-3">
-              {TESTIMONIALS.map((t) => (
-                <figure
+              {TESTIMONIALS.map((t, i) => (
+                <motion.figure
                   key={t.name}
-                  className="flex flex-col rounded-xl border border-border bg-card p-6 shadow-sm"
+                  {...reveal}
+                  viewport={{ once: true, margin: "-80px" }}
+                  transition={{ delay: i * 0.1, duration: 0.5 }}
+                  whileHover={{ y: -4 }}
+                  className="flex flex-col rounded-3xl border border-[#E7E2D8] bg-[#FFFDF8] p-6 shadow-sm"
                 >
                   <div className="flex gap-1" aria-label="5 out of 5 stars">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden />
+                    {Array.from({ length: 5 }).map((_, s) => (
+                      <StarIcon key={s} size={16} className="text-[#0C6B4F]" />
                     ))}
                   </div>
                   <blockquote className="mt-4 flex-1 text-sm leading-6">
@@ -442,9 +589,9 @@ export default function Home() {
                   </blockquote>
                   <figcaption className="mt-4 text-sm">
                     <span className="font-semibold">{t.name}</span>
-                    <span className="block text-muted-foreground">{t.role}</span>
+                    <span className="block text-[#6B675E]">{t.role}</span>
                   </figcaption>
-                </figure>
+                </motion.figure>
               ))}
             </div>
           </div>
@@ -452,76 +599,89 @@ export default function Home() {
 
         {/* FAQ */}
         <section aria-labelledby="faq-heading" className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-24">
-          <h2 id="faq-heading" className="text-center text-3xl font-bold tracking-tight">
-            Frequently asked questions
-          </h2>
-          <div className="mt-10 space-y-4">
+          <motion.h2
+            id="faq-heading"
+            {...reveal}
+            viewport={{ once: true, margin: "-80px" }}
+            className="text-center text-4xl tracking-tight sm:text-5xl"
+            style={{ fontFamily: "var(--font-display), Georgia, serif" }}
+          >
+            Frequently asked <em className="text-[#0C6B4F]">questions</em>
+          </motion.h2>
+          <div className="mt-10 space-y-3">
             {FAQS.map((f) => (
-              <details
-                key={f.q}
-                className="group rounded-xl border border-border bg-card px-5 py-4 shadow-sm"
-              >
-                <summary className="cursor-pointer list-none font-medium">
-                  {f.q}
-                </summary>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{f.a}</p>
-              </details>
+              <FaqItem key={f.q} q={f.q} a={f.a} />
             ))}
           </div>
         </section>
 
         {/* CTA band */}
         <section aria-labelledby="cta-heading" className="mx-auto max-w-6xl px-4 pb-16 sm:px-6 sm:pb-24">
-          <div className="rounded-xl bg-primary px-6 py-14 text-center text-primary-foreground sm:px-12">
-            <h2 id="cta-heading" className="text-3xl font-bold tracking-tight">
-              Send your first beautiful invoice today
+          <motion.div
+            {...reveal}
+            viewport={{ once: true, margin: "-80px" }}
+            className="relative overflow-hidden rounded-[2rem] bg-[#0C6B4F] px-6 py-14 text-center text-white sm:px-12 sm:py-20"
+          >
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full bg-[#D9F452]/20 blur-3xl"
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -bottom-24 -left-16 h-64 w-64 rounded-full bg-[#D9F452]/10 blur-3xl"
+            />
+            <ChartIcon size={40} className="mx-auto text-[#D9F452]" />
+            <h2
+              id="cta-heading"
+              className="mx-auto mt-4 max-w-2xl text-4xl leading-tight tracking-tight text-balance sm:text-6xl"
+              style={{ fontFamily: "var(--font-display), Georgia, serif" }}
+            >
+              Send your first <em className="text-[#D9F452]">beautiful</em> invoice today
             </h2>
-            <p className="mx-auto mt-3 max-w-md opacity-80">
+            <p className="mx-auto mt-3 max-w-md text-white/70">
               Free forever for basics. No signup, no credit card — just a better
               invoice in two minutes.
             </p>
-            <a
+            <motion.a
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
               href="/create/invoice"
               className={cn(
-                buttonVariants({ variant: "secondary", size: "lg" }),
-                "mt-8",
+                "mt-8 inline-flex items-center gap-2 rounded-full bg-[#D9F452] px-8 py-3.5 text-base font-bold text-[#101210]",
               )}
             >
               Start Free — No Signup
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </a>
-          </div>
+              <ArrowRightIcon size={18} />
+            </motion.a>
+          </motion.div>
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border">
+      {/* Footer — dark */}
+      <footer className="bg-[#101210] text-[#F7F5F0]">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 px-4 py-10 sm:flex-row sm:px-6">
           <div className="text-center sm:text-left">
-            <a href="#" className="flex items-center justify-center gap-2 font-bold sm:justify-start">
-              <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                <Zap className="h-3.5 w-3.5" aria-hidden />
-              </span>
-              SmartBillr
+            <a href="#" aria-label="SmartBillr home" className="flex items-center justify-center sm:justify-start">
+              <Wordmark size={28} />
             </a>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-2 text-sm text-white/55">
               Beautiful invoices in minutes. Free for basics.
             </p>
           </div>
-          <nav aria-label="Footer" className="flex gap-6 text-sm text-muted-foreground">
-            <a href="#features" className="transition-colors hover:text-foreground">
+          <nav aria-label="Footer" className="flex gap-6 text-sm text-white/60">
+            <a href="#features" className="transition-colors hover:text-[#D9F452]">
               Features
             </a>
-            <a href="#templates" className="transition-colors hover:text-foreground">
+            <a href="#templates" className="transition-colors hover:text-[#D9F452]">
               Templates
             </a>
-            <a href="#pricing" className="transition-colors hover:text-foreground">
+            <a href="#pricing" className="transition-colors hover:text-[#D9F452]">
               Pricing
             </a>
           </nav>
         </div>
-        <div className="border-t border-border">
-          <p className="mx-auto max-w-6xl px-4 py-4 text-center text-xs text-muted-foreground sm:px-6">
+        <div className="border-t border-white/10">
+          <p className="mx-auto max-w-6xl px-4 py-4 text-center text-xs text-white/45 sm:px-6">
             © 2026 SmartBillr. All rights reserved.
           </p>
         </div>
