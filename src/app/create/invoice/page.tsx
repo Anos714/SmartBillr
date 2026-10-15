@@ -23,6 +23,7 @@ import { useGuestStore, type MetaTarget } from "@/lib/guest-store";
 import { TEMPLATE_CATALOG, type TemplateMeta } from "@/lib/templates";
 import { getTemplate, canUseTemplate } from "@/components/invoice-templates/registry";
 import { PaywallModal } from "@/components/editor/PaywallModal";
+import { CustomSelect } from "@/components/ui/select";
 import { Accordion } from "@/components/editor/Accordion";
 import { AppShell, TopbarAction, topbarActionCls } from "@/components/AppShell";
 import {
@@ -544,46 +545,46 @@ function EditorInner() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className={labelCls} htmlFor="template-select">Template</label>
-                <select
+                <CustomSelect
                   id="template-select"
-                  className={inputCls}
+                  label="Template"
                   value={invoice.templateId}
-                  onChange={(e) => {
-                    const meta = TEMPLATE_CATALOG.find((t) => t.id === e.target.value);
+                  onChange={(next) => {
+                    const meta = TEMPLATE_CATALOG.find((t) => t.id === next);
                     if (!meta) return;
-                    if (!canUseTemplate(false, meta.id)) {
-                      setLocked(meta);
-                      return;
-                    }
                     setInvoice({ templateId: meta.id, accent: meta.accent });
                   }}
-                >
-                  {TEMPLATE_CATALOG.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}{t.isFree ? "" : " — PRO"}
-                    </option>
-                  ))}
-                </select>
+                  onLocked={(opt) => {
+                    const meta = TEMPLATE_CATALOG.find((t) => t.id === opt.value);
+                    if (meta) setLocked(meta);
+                  }}
+                  options={TEMPLATE_CATALOG.map((t) => ({
+                    value: t.id,
+                    label: t.isFree ? t.name : `${t.name} — PRO`,
+                    locked: !canUseTemplate(false, t.id),
+                  }))}
+                />
               </div>
               <div>
                 <label className={labelCls} htmlFor="font-select">Font</label>
-                <select
+                <CustomSelect
                   id="font-select"
-                  className={inputCls}
+                  label="Font"
                   value={invoice.theme?.font ?? "geist"}
-                  onChange={(e) =>
+                  onChange={(next) =>
                     setInvoice({
                       theme: {
                         ...(invoice.theme ?? { baseColor: "#0C6B4F", mode: "light" as const }),
-                        font: e.target.value as "geist" | "inter" | "serif",
+                        font: next as "geist" | "inter" | "serif",
                       },
                     })
                   }
-                >
-                  <option value="geist">Geist</option>
-                  <option value="inter">Inter</option>
-                  <option value="serif">Serif</option>
-                </select>
+                  options={[
+                    { value: "geist", label: "Geist" },
+                    { value: "inter", label: "Inter" },
+                    { value: "serif", label: "Serif" },
+                  ]}
+                />
               </div>
             </div>
           </section>
@@ -746,18 +747,20 @@ function EditorInner() {
                   />
                 </div>
                 <div>
-                  <label className={labelCls}>Currency</label>
-                  <select
-                    className={inputCls}
+                  <label className={labelCls} htmlFor="currency-select">Currency</label>
+                  <CustomSelect
+                    id="currency-select"
+                    label="Currency"
                     value={invoice.currency}
-                    onChange={(e) =>
-                      setInvoice({ currency: e.target.value as typeof invoice.currency })
+                    onChange={(next) =>
+                      setInvoice({ currency: next as typeof invoice.currency })
                     }
-                  >
-                    <option value="INR">INR</option>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                  </select>
+                    options={[
+                      { value: "INR", label: "INR" },
+                      { value: "USD", label: "USD" },
+                      { value: "EUR", label: "EUR" },
+                    ]}
+                  />
                 </div>
                 <div>
                   <label className={labelCls}>Payment terms</label>
