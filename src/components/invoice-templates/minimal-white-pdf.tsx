@@ -21,7 +21,7 @@ const itemName = (it: { name?: string; desc?: string }) =>
   (it.name && it.name.trim()) || (it.desc && it.desc.trim()) || "Untitled item";
 
 const styles = StyleSheet.create({
-  page: { padding: 48, fontSize: 10, color: "#18181b", backgroundColor: "#ffffff", fontFamily: INVOICE_PDF_FONT_FAMILY },
+  page: { padding: 48, paddingBottom: 72, fontSize: 10, color: "#18181b", backgroundColor: "#ffffff", fontFamily: INVOICE_PDF_FONT_FAMILY },
   header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 24 },
   label: { fontSize: 8, fontWeight: "bold", color: "#a1a1aa", textTransform: "uppercase", letterSpacing: 1 },
   invoiceNo: { fontSize: 24, fontWeight: "bold", marginTop: 4 },
@@ -39,11 +39,22 @@ const styles = StyleSheet.create({
   itemDescSmall: { fontSize: 8, color: "#71717a", marginTop: 2 },
   totalsWrap: { alignItems: "flex-end", marginTop: 16 },
   totalsBox: { width: 256 },
-  totalRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4, color: "#52525b" },
-  grandRow: { flexDirection: "row", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: "#0C6B4F", paddingTop: 6, fontSize: 16, fontWeight: "bold", color: "#18181b" },
-  foot: { flexDirection: "row", gap: 24, marginTop: 28, fontSize: 8, color: "#71717a" },
-  footCol: { flex: 1 },
-  watermark: { textAlign: "center", marginTop: 36, fontSize: 8, color: "#a1a1aa" },
+  totalRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4, color: "#52525b", fontSize: 10 },
+  divider: { borderTopWidth: 1, borderTopColor: "#e4e4e7", marginTop: 2, marginBottom: 6 },
+  grandRow: { flexDirection: "row", justifyContent: "space-between", fontSize: 14, fontWeight: "bold", color: "#18181b" },
+  payBlock: { marginTop: 16 },
+  payLabel: { fontSize: 9, fontWeight: "bold", color: "#a1a1aa", textTransform: "uppercase", letterSpacing: 1 },
+  payLine: { fontSize: 8, color: "#52525b", marginTop: 2 },
+  notesRow: { flexDirection: "row", marginTop: 16, gap: 24 },
+  notesCol: { width: "50%" },
+  notesLabel: { fontSize: 9, fontWeight: "bold", color: "#a1a1aa", textTransform: "uppercase", letterSpacing: 1 },
+  notesText: { fontSize: 10, color: "#52525b", marginTop: 4 },
+  sigRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 20 },
+  sigBox: { alignItems: "flex-end" },
+  sigImage: { width: 120, height: 36, objectFit: "contain" },
+  sigSpacer: { width: 160, height: 36, borderBottomWidth: 1, borderBottomColor: "#d6d3d1" },
+  sigCaption: { fontSize: 8, color: "#71717a", marginTop: 4 },
+  watermark: { position: "absolute", bottom: 18, left: 0, right: 0, textAlign: "center", fontSize: 8, color: "#a1a1aa" },
 });
 
 export function MinimalWhitePdfDocument({ data, totals, watermark }: TemplateProps) {
@@ -142,56 +153,55 @@ export function MinimalWhitePdfDocument({ data, totals, watermark }: TemplatePro
                 <Text>{money(data.currency, totals.adjustmentsTotal)}</Text>
               </View>
             ) : null}
-            <View style={[styles.grandRow, { borderTopColor: accent }]}>
+            <View style={styles.divider} />
+            <View style={styles.grandRow}>
               <Text>Total</Text>
               <Text>{money(data.currency, totals.grandTotal)}</Text>
             </View>
           </View>
         </View>
 
-        {(data.notes || data.terms) ? (
-          <View style={styles.foot}>
-            {data.notes ? (
-              <View style={styles.footCol}>
-                <Text style={styles.headText}>Notes</Text>
-                <Text>{data.notes}</Text>
-              </View>
-            ) : null}
-            {data.terms ? (
-              <View style={styles.footCol}>
-                <Text style={styles.headText}>Terms</Text>
-                <Text>{data.terms}</Text>
-              </View>
-            ) : null}
+        {(data.paymentInfo ?? []).length > 0 ? (
+          <View style={styles.payBlock}>
+            <Text style={styles.payLabel}>Payment info</Text>
+            {(data.paymentInfo ?? []).map((m, i) => (
+              <Text key={i} style={styles.payLine}>
+                {m.label ? `${m.label}: ` : ""}{m.value}
+              </Text>
+            ))}
           </View>
         ) : null}
 
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 20, gap: 24 }}>
-          <View style={{ flex: 1 }}>
-            {(data.paymentInfo ?? []).length > 0 ? (
-              <View>
-                <Text style={styles.headText}>Payment info</Text>
-                {(data.paymentInfo ?? []).map((m, i) => (
-                  <Text key={i} style={{ fontSize: 8, color: "#52525b", marginTop: 2 }}>
-                    {m.label ? `${m.label}: ` : ""}{m.value}
-                  </Text>
-                ))}
-              </View>
-            ) : null}
+        {(data.notes || data.terms) ? (
+          <View style={styles.notesRow}>
+            <View style={styles.notesCol}>
+              {data.notes ? (
+                <>
+                  <Text style={styles.notesLabel}>Notes</Text>
+                  <Text style={styles.notesText}>{data.notes}</Text>
+                </>
+              ) : null}
+            </View>
+            <View style={styles.notesCol}>
+              {data.terms ? (
+                <>
+                  <Text style={styles.notesLabel}>Terms</Text>
+                  <Text style={styles.notesText}>{data.terms}</Text>
+                </>
+              ) : null}
+            </View>
           </View>
-          <View style={{ alignItems: "flex-end", marginLeft: "auto" }}>
+        ) : null}
+
+        <View style={styles.sigRow}>
+          <View style={styles.sigBox}>
             {data.signatureUrl ? (
               // eslint-disable-next-line jsx-a11y/alt-text
-              <Image
-                src={data.signatureUrl}
-                style={{ width: 120, height: 40, objectFit: "contain" }}
-              />
+              <Image src={data.signatureUrl} style={styles.sigImage} />
             ) : (
-              <View style={{ width: 160, height: 40, borderBottomWidth: 1, borderBottomColor: "#d6d3d1" }} />
+              <View style={styles.sigSpacer} />
             )}
-            <Text style={{ fontSize: 8, color: "#71717a", marginTop: 4 }}>
-              Authorized signature
-            </Text>
+            <Text style={styles.sigCaption}>Authorized signature</Text>
           </View>
         </View>
 

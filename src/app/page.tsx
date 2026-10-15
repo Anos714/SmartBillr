@@ -647,7 +647,7 @@ export default function Home() {
             >
               Loved by freelancers <em className="text-[#0C6B4F]">across India</em>
             </motion.h2>
-            <motion.p
+            <motion.div
               {...reveal}
               viewport={{ once: true, margin: "-80px" }}
               className="mt-3 flex items-center justify-center gap-2 text-center text-sm text-[#6B675E]"
@@ -656,7 +656,7 @@ export default function Home() {
               <span>
                 <strong className="font-bold text-[#141412]">4.9/5</strong> from 2,000+ creators
               </span>
-            </motion.p>
+            </motion.div>
             <div className="mt-10 grid gap-6 md:grid-cols-3">
               {TESTIMONIALS.map((t, i) => (
                 <motion.figure

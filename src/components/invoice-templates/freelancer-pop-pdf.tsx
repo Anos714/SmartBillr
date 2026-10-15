@@ -30,7 +30,7 @@ const styles = StyleSheet.create({
   totalLabel: { fontSize: 8, fontWeight: "bold", color: "#a1a1aa", textTransform: "uppercase" },
   totalValue: { fontSize: 18, fontWeight: "bold", marginTop: 4 },
   totalDue: { fontSize: 8, color: "#71717a", marginTop: 4 },
-  body: { padding: 32 },
+  body: { padding: 32, paddingBottom: 72 },
   metaRow: { flexDirection: "row", justifyContent: "space-between", color: "#52525b" },
   metaLabel: { fontSize: 8, fontWeight: "bold", color: "#a1a1aa", textTransform: "uppercase" },
   itemRow: { flexDirection: "row", justifyContent: "space-between", padding: 10, borderRadius: 6 },
@@ -38,11 +38,22 @@ const styles = StyleSheet.create({
   itemSub: { fontSize: 8, color: "#71717a", marginTop: 2 },
   totalsWrap: { alignItems: "flex-end", marginTop: 16 },
   totalsBox: { width: 256 },
-  totalRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4, color: "#52525b" },
-  grandRow: { flexDirection: "row", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: "#0C6B4F", paddingTop: 6, fontSize: 16, fontWeight: "bold", color: "#18181b" },
-  foot: { flexDirection: "row", gap: 24, marginTop: 28, fontSize: 8, color: "#71717a" },
-  footCol: { flex: 1 },
-  watermark: { textAlign: "center", marginTop: 28, fontSize: 8, color: "#a1a1aa" },
+  totalRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4, color: "#52525b", fontSize: 10 },
+  divider: { borderTopWidth: 1, borderTopColor: "#e4e4e7", marginTop: 2, marginBottom: 6 },
+  grandRow: { flexDirection: "row", justifyContent: "space-between", fontSize: 14, fontWeight: "bold", color: "#18181b" },
+  payBlock: { marginTop: 16 },
+  payLabel: { fontSize: 9, fontWeight: "bold", color: "#a1a1aa", textTransform: "uppercase" },
+  payLine: { fontSize: 8, color: "#52525b", marginTop: 2 },
+  notesRow: { flexDirection: "row", marginTop: 16, gap: 24 },
+  notesCol: { width: "50%" },
+  notesLabel: { fontSize: 9, fontWeight: "bold", color: "#a1a1aa", textTransform: "uppercase" },
+  notesText: { fontSize: 10, color: "#52525b", marginTop: 4 },
+  sigRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 20 },
+  sigBox: { alignItems: "flex-end" },
+  sigImage: { width: 120, height: 36, objectFit: "contain" },
+  sigSpacer: { width: 160, height: 36, borderBottomWidth: 1, borderBottomColor: "#d6d3d1" },
+  sigCaption: { fontSize: 8, color: "#71717a", marginTop: 4 },
+  watermark: { position: "absolute", bottom: 18, left: 0, right: 0, textAlign: "center", fontSize: 8, color: "#a1a1aa" },
 });
 
 export function FreelancerPopPdfDocument({ data, totals, watermark }: TemplateProps) {
@@ -149,61 +160,60 @@ export function FreelancerPopPdfDocument({ data, totals, watermark }: TemplatePr
                   <Text>{money(data.currency, totals.adjustmentsTotal)}</Text>
                 </View>
               ) : null}
-              <View style={[styles.grandRow, { borderTopColor: accent }]}>
+              <View style={styles.divider} />
+              <View style={styles.grandRow}>
                 <Text>Total</Text>
                 <Text>{money(data.currency, totals.grandTotal)}</Text>
               </View>
             </View>
           </View>
 
-          {(data.notes || data.terms) ? (
-            <View style={styles.foot}>
-              {data.notes ? (
-                <View style={styles.footCol}>
-                  <Text style={styles.metaLabel}>Notes</Text>
-                  <Text>{data.notes}</Text>
-                </View>
-              ) : null}
-              {data.terms ? (
-                <View style={styles.footCol}>
-                  <Text style={styles.metaLabel}>Terms</Text>
-                  <Text>{data.terms}</Text>
-                </View>
-              ) : null}
+          {(data.paymentInfo ?? []).length > 0 ? (
+            <View style={styles.payBlock}>
+              <Text style={styles.payLabel}>Payment info</Text>
+              {(data.paymentInfo ?? []).map((m, i) => (
+                <Text key={i} style={styles.payLine}>
+                  {m.label ? `${m.label}: ` : ""}{m.value}
+                </Text>
+              ))}
             </View>
           ) : null}
 
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 20, gap: 24 }}>
-            <View style={{ flex: 1 }}>
-              {(data.paymentInfo ?? []).length > 0 ? (
-                <View>
-                  <Text style={styles.metaLabel}>Payment info</Text>
-                  {(data.paymentInfo ?? []).map((m, i) => (
-                    <Text key={i} style={{ fontSize: 9, color: "#52525b", marginTop: 2 }}>
-                      {m.label ? `${m.label}: ` : ""}{m.value}
-                    </Text>
-                  ))}
-                </View>
-              ) : null}
+          {(data.notes || data.terms) ? (
+            <View style={styles.notesRow}>
+              <View style={styles.notesCol}>
+                {data.notes ? (
+                  <>
+                    <Text style={styles.notesLabel}>Notes</Text>
+                    <Text style={styles.notesText}>{data.notes}</Text>
+                  </>
+                ) : null}
+              </View>
+              <View style={styles.notesCol}>
+                {data.terms ? (
+                  <>
+                    <Text style={styles.notesLabel}>Terms</Text>
+                    <Text style={styles.notesText}>{data.terms}</Text>
+                  </>
+                ) : null}
+              </View>
             </View>
-            <View style={{ alignItems: "flex-end", marginLeft: "auto" }}>
+          ) : null}
+
+          <View style={styles.sigRow}>
+            <View style={styles.sigBox}>
               {data.signatureUrl ? (
                 // eslint-disable-next-line jsx-a11y/alt-text
-                <Image
-                  src={data.signatureUrl}
-                  style={{ width: 120, height: 40, objectFit: "contain" }}
-                />
+                <Image src={data.signatureUrl} style={styles.sigImage} />
               ) : (
-                <View style={{ width: 160, height: 40, borderBottomWidth: 1, borderBottomColor: "#d6d3d1" }} />
+                <View style={styles.sigSpacer} />
               )}
-              <Text style={{ fontSize: 8, color: "#71717a", marginTop: 4 }}>
-                Authorized signature
-              </Text>
+              <Text style={styles.sigCaption}>Authorized signature</Text>
             </View>
           </View>
-
-          {watermark ? <Text style={styles.watermark}>Made with SmartBillr</Text> : null}
         </View>
+
+        {watermark ? <Text style={styles.watermark}>Made with SmartBillr</Text> : null}
       </Page>
     </Document>
   );

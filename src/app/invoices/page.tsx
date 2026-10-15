@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Filter, Plus } from "lucide-react";
 import { AppShell, TopbarAction } from "@/components/AppShell";
+import { CustomSelect } from "@/components/ui/select";
 import { InvoiceIcon } from "@/components/icons";
 import {
   deleteInvoice,
@@ -143,18 +144,19 @@ export default function InvoicesPage() {
             >
               Status
             </label>
-            <select
+            <CustomSelect
               id="status-filter"
+              label="Status"
               value={status}
-              onChange={(e) => handleStatus(e.target.value as StatusFilter)}
-              className="rounded-xl border border-[#E7E2D8] bg-white px-3 py-2 text-sm outline-none focus:border-[#0C6B4F]"
-            >
-              <option value="all">All</option>
-              <option value="draft">Draft</option>
-              <option value="pending">Pending</option>
-              <option value="paid">Paid</option>
-              <option value="overdue">Overdue</option>
-            </select>
+              onChange={(next) => handleStatus(next as StatusFilter)}
+              options={[
+                { value: "all", label: "All" },
+                { value: "draft", label: "Draft" },
+                { value: "pending", label: "Pending" },
+                { value: "paid", label: "Paid" },
+                { value: "overdue", label: "Overdue" },
+              ]}
+            />
           </div>
           <div className="flex-1">
             <label
