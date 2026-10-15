@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { AppShell, TopbarAction } from "@/components/AppShell";
 import { CustomSelect } from "@/components/ui/select";
+import { EmptyState, StatusPill, Toast } from "@/components/ui/feedback";
 import { AnchoredMenu } from "@/components/ui/anchored-menu";
 import { InvoiceIcon } from "@/components/icons";
 import {
@@ -42,13 +43,6 @@ type StatusFilter = "all" | InvoiceStatus;
 
 type SortKey = "total" | "items" | "issueDate" | "savedAt" | "paidAt";
 type SortDir = "asc" | "desc";
-
-const STATUS_PILL: Record<InvoiceStatus, string> = {
-  draft: "bg-stone-100 text-stone-600",
-  pending: "bg-amber-100 text-amber-800",
-  paid: "bg-emerald-100 text-emerald-800",
-  overdue: "bg-red-100 text-red-700",
-};
 
 function serialOf(e: SavedInvoice): string {
   const combined = `${e.invoice.prefix ?? ""}${e.invoice.serialNumber ?? ""}`;
@@ -467,58 +461,52 @@ function RowActions({
       {!mounted || (isAccount && loading && invoices.length === 0) ? (
         <p className="p-8 text-sm text-stone-500">Loading invoices…</p>
       ) : loadError && invoices.length === 0 ? (
-        <section className="mx-auto flex max-w-md flex-col items-center rounded-3xl border border-[#E7E2D8] bg-[#FFFDF8] px-8 py-14 text-center">
-          <h2
-            className="mt-5 text-2xl tracking-tight text-[#141412]"
-            style={{ fontFamily: "var(--font-display), Georgia, serif" }}
-          >
-            Could not load invoices
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-stone-500">
-            Something went wrong fetching your account invoices.
-          </p>
-          <button
-            type="button"
-            onClick={() => refresh()}
-            className="mt-6 rounded-xl bg-[#0C6B4F] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0a5a42]"
-          >
-            Retry
-          </button>
-        </section>
-      ) : rows.length === 0 ? (
-        <section className="mx-auto flex max-w-md flex-col items-center rounded-3xl border border-[#E7E2D8] bg-[#FFFDF8] px-8 py-14 text-center">
-          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[#0C6B4F]/10 text-[#0C6B4F]">
-            <InvoiceIcon size={32} />
-          </span>
-          <h2
-            className="mt-5 text-2xl tracking-tight text-[#141412]"
-            style={{ fontFamily: "var(--font-display), Georgia, serif" }}
-          >
-            No Data Found
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-stone-500">
-            {hasFilters
-              ? "No invoices match your filters. Try clearing them."
-              : "You have no saved invoices yet. Create one to get started."}
-          </p>
-          <div className="mt-6 flex gap-2">
-            {hasFilters ? (
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="rounded-xl border border-[#E7E2D8] px-5 py-2.5 text-sm font-semibold text-[#3f3c37] hover:border-[#0C6B4F]/50 hover:text-[#0C6B4F]"
-              >
-                Clear filters
-              </button>
-            ) : null}
-            <Link
-              href="/create/invoice"
+        <EmptyState
+          title="Could not load invoices"
+          copy="Something went wrong fetching your account invoices."
+          action={
+            <button
+              type="button"
+              onClick={() => refresh()}
               className="rounded-xl bg-[#0C6B4F] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0a5a42]"
             >
-              Create invoice
-            </Link>
-          </div>
-        </section>
+              Retry
+            </button>
+          }
+        />
+      ) : rows.length === 0 ? (
+        <EmptyState
+          icon={
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[#0C6B4F]/10 text-[#0C6B4F]">
+              <InvoiceIcon size={32} />
+            </span>
+          }
+          title="No Data Found"
+          copy={
+            hasFilters
+              ? "No invoices match your filters. Try clearing them."
+              : "You have no saved invoices yet. Create one to get started."
+          }
+          action={
+            <>
+              {hasFilters ? (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="rounded-xl border border-[#E7E2D8] px-5 py-2.5 text-sm font-semibold text-[#3f3c37] hover:border-[#0C6B4F]/50 hover:text-[#0C6B4F]"
+                >
+                  Clear filters
+                </button>
+              ) : null}
+              <Link
+                href="/create/invoice"
+                className="rounded-xl bg-[#0C6B4F] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0a5a42]"
+              >
+                Create invoice
+              </Link>
+            </>
+          }
+        />
       ) : (
         <>
           <div className="overflow-x-auto rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
@@ -570,14 +558,7 @@ function RowActions({
                       </td>
                       <td className="px-4 py-3">{e.invoice.items.length}</td>
                       <td className="px-4 py-3">
-                        <span
-                          className={cn(
-                            "rounded-full px-2.5 py-0.5 text-[11px] font-bold capitalize",
-                            STATUS_PILL[e.status],
-                          )}
-                        >
-                          {e.status}
-                        </span>
+                        <StatusPill status={e.status} />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-stone-600">
                         {e.invoice.issueDate || "—"}
@@ -642,14 +623,7 @@ function RowActions({
         </>
       )}
 
-      {toast ? (
-        <div
-          role="status"
-          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#141412] px-4 py-2 text-sm font-semibold whitespace-nowrap text-white shadow-xl"
-        >
-          {toast}
-        </div>
-      ) : null}
+      <Toast message={toast} />
     </AppShell>
   );
 }

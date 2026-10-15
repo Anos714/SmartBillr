@@ -19,11 +19,11 @@ import {
   type IconProps,
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
+import { topbarActionCls } from "@/components/ui/forms";
 import { signIn, signOut, useSession } from "@/lib/auth-client";
 
-/** Small bordered button style for topbar actions. */
-export const topbarActionCls =
-  "inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#E7E2D8] bg-[#FFFDF8] px-2.5 py-1.5 text-xs font-semibold whitespace-nowrap text-[#3f3c37] transition hover:border-[#0C6B4F]/50 hover:text-[#0C6B4F] disabled:cursor-not-allowed disabled:opacity-50";
+/** Re-exported from the shared forms module (single source). */
+export { topbarActionCls };
 
 /** Small bordered topbar button. */
 export function TopbarAction({

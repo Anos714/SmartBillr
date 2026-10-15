@@ -6,6 +6,7 @@ import { RefreshCw } from "lucide-react";
 import { AppShell, TopbarAction } from "@/components/AppShell";
 import { DashboardIcon, PlusIcon } from "@/components/icons";
 import { CustomSelect } from "@/components/ui/select";
+import { EmptyState } from "@/components/ui/feedback";
 import { TrendsAreaChart } from "@/components/evilcharts/area-chart";
 import { listInvoices, type SavedInvoice } from "@/lib/library";
 import { formatMoney } from "@/lib/money";
@@ -120,37 +121,34 @@ export default function DashboardPage() {
       {!mounted || (isAccount && loading && invoices.length === 0) ? (
         <p className="p-8 text-sm text-stone-500">Loading dashboard…</p>
       ) : loadError && invoices.length === 0 ? (
-        <section className="mx-auto flex max-w-md flex-col items-center rounded-3xl border border-[#E7E2D8] bg-[#FFFDF8] px-8 py-14 text-center shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
-          <h2 className="mt-5 text-2xl tracking-tight text-[#141412]" style={serif}>
-            Could not load dashboard
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-stone-500">
-            Something went wrong fetching your account data.
-          </p>
-          <button
-            type="button"
-            onClick={refresh}
-            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#0C6B4F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0a5a42]"
-          >
-            Retry
-          </button>
-        </section>
+        <EmptyState
+          title="Could not load dashboard"
+          copy="Something went wrong fetching your account data."
+          className="shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]"
+          action={
+            <button
+              type="button"
+              onClick={refresh}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#0C6B4F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0a5a42]"
+            >
+              Retry
+            </button>
+          }
+        />
       ) : invoices.length === 0 ? (
-        <section className="mx-auto flex max-w-md flex-col items-center rounded-3xl border border-[#E7E2D8] bg-[#FFFDF8] px-8 py-14 text-center shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
-          <h2 className="mt-5 text-2xl tracking-tight text-[#141412]" style={serif}>
-            No invoices yet
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-stone-500">
-            Create your first invoice and it will show up here with collection
-            stats and client activity.
-          </p>
-          <Link
-            href="/create/invoice"
-            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#0C6B4F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0a5a42]"
-          >
-            Create your first invoice -&gt;
-          </Link>
-        </section>
+        <EmptyState
+          title="No invoices yet"
+          copy="Create your first invoice and it will show up here with collection stats and client activity."
+          className="shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]"
+          action={
+            <Link
+              href="/create/invoice"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#0C6B4F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0a5a42]"
+            >
+              Create your first invoice -&gt;
+            </Link>
+          }
+        />
       ) : (
         <div className="space-y-5">
           {/* Overview — all time, per currency */}

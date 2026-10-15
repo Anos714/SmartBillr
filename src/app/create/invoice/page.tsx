@@ -28,7 +28,9 @@ import { getTemplate, canUseTemplate } from "@/components/invoice-templates/regi
 import { PaywallModal } from "@/components/editor/PaywallModal";
 import { CustomSelect } from "@/components/ui/select";
 import { Accordion } from "@/components/editor/Accordion";
-import { AppShell, TopbarAction, topbarActionCls } from "@/components/AppShell";
+import { AppShell, TopbarAction } from "@/components/AppShell";
+import { Toast } from "@/components/ui/feedback";
+import { inputCls, labelCls, topbarActionCls } from "@/components/ui/forms";
 import {
   DownloadIcon,
   PlusIcon,
@@ -37,11 +39,6 @@ import {
 } from "@/components/icons";
 import { ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-export const inputCls =
-  "w-full rounded-xl border border-[#E7E2D8] bg-[#FFFDF8] px-3 py-2 text-sm text-[#141412] shadow-[inset_0_1px_2px_rgba(20,20,18,0.04)] outline-none transition placeholder:text-stone-400 focus:border-[#0C6B4F] focus:ring-2 focus:ring-[#0C6B4F]/25";
-export const labelCls =
-  "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[#3f3c37]";
 
 type ViewMode = "both" | "form" | "preview";
 
@@ -1136,14 +1133,7 @@ function EditorInner() {
         </div>
       </div>
 
-      {toast ? (
-        <div
-          role="status"
-          className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#141412] px-4 py-2 text-sm font-semibold whitespace-nowrap text-white shadow-xl lg:bottom-6"
-        >
-          {toast}
-        </div>
-      ) : null}
+      <Toast message={toast} className="bottom-20 lg:bottom-6" />
 
       <PaywallModal
         templateName={locked?.name ?? ""}

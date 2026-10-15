@@ -96,8 +96,15 @@ export type InvoiceTotals = {
   adjustmentsDetailed: AdjustmentAmount[];
 };
 
-const round2 = (d: Decimal): number =>
-  d.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber();
+/**
+ * Single 2dp rounding source (Decimal ROUND_HALF_UP — correct for money,
+ * e.g. 0.005 → 0.01). Accepts Decimals (exact) or plain numbers.
+ */
+export function round2(value: Decimal | number): number {
+  const d = value instanceof Decimal ? value : new Decimal(value);
+  if (!d.isFinite()) return 0;
+  return d.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber();
+}
 
 export function calcTotals(data: {
   items: InvoiceItem[];

@@ -5,6 +5,8 @@ import { Trash2, Upload, PenLine, Image as ImageIcon } from "lucide-react";
 import { CldImage } from "next-cloudinary";
 import { AppShell } from "@/components/AppShell";
 import { CardIcon } from "@/components/icons";
+import { Toast } from "@/components/ui/feedback";
+import { inputCls, labelCls } from "@/components/ui/forms";
 import { useGuestStore, DEFAULT_DETAILS_KEY } from "@/lib/guest-store";
 import { useSession } from "@/lib/auth-client";
 import {
@@ -23,10 +25,6 @@ const MAX_SIG_UPLOAD_BYTES = 150 * 1024;
 const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? "";
 const cloudConfigured = Boolean(CLOUD_NAME);
 
-const inputCls =
-  "w-full rounded-xl border border-[#E7E2D8] bg-[#FFFDF8] px-3 py-2 text-sm text-[#141412] shadow-[inset_0_1px_2px_rgba(20,20,18,0.04)] outline-none transition placeholder:text-stone-400 focus:border-[#0C6B4F] focus:ring-2 focus:ring-[#0C6B4F]/25";
-const labelCls =
-  "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[#3f3c37]";
 const serif = { fontFamily: "var(--font-display), Georgia, serif" } as const;
 
 type DetailsForm = {
@@ -746,14 +744,7 @@ export default function AssetsPage() {
         </section>
       </div>
 
-      {toast ? (
-        <div
-          role="status"
-          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#141412] px-4 py-2 text-sm font-semibold whitespace-nowrap text-white shadow-xl"
-        >
-          {toast}
-        </div>
-      ) : null}
+      <Toast message={toast} />
     </AppShell>
   );
 }
