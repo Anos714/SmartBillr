@@ -4,13 +4,24 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { RefreshCw } from "lucide-react";
 import { AppShell, TopbarAction } from "@/components/AppShell";
-import { DashboardIcon, InvoiceIcon, PlusIcon } from "@/components/icons";
+import { DashboardIcon, PlusIcon } from "@/components/icons";
+import { CustomSelect } from "@/components/ui/select";
+import { TrendsAreaChart } from "@/components/evilcharts/area-chart";
 import { listInvoices, type SavedInvoice } from "@/lib/library";
+import {
+  currencies,
+  monthlySeries,
+  overview,
+  topClients,
+} from "@/lib/stats";
 import { fetchRemoteInvoices } from "@/lib/sync-client";
 import { useSession } from "@/lib/auth-client";
 import { MigrateBanner } from "@/components/MigrateBanner";
 
 const serif = { fontFamily: "var(--font-display), Georgia, serif" } as const;
+
+/** Deterministic fallback so prerender never reads the current time. */
+const FALLBACK_NOW = new Date(0);
 
 function fmt(n: number): string {
   return n.toLocaleString("en-IN", {
@@ -19,6 +30,8 @@ function fmt(n: number): string {
   });
 }
 
+type RangeOpt = "6" | "12";
+
 export default function DashboardPage() {
   const { data: session } = useSession();
   const isAccount = Boolean(session?.user);
@@ -26,6 +39,9 @@ export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [currency, setCurrency] = useState<string | null>(null);
+  const [range, setRange] = useState<RangeOpt>("6");
+  const [now, setNow] = useState<Date | null>(null);
 
   const refresh = useCallback(() => {
     if (isAccount) {
@@ -44,40 +60,42 @@ export default function DashboardPage() {
     const id = requestAnimationFrame(() => {
       refresh();
       setMounted(true);
+      // Read the clock here (not during render) so prerender stays
+      // deterministic — Next flags `new Date()` evaluated during prerender.
+      setNow(new Date());
     });
     return () => cancelAnimationFrame(id);
   }, [refresh]);
+  const nowOrFallback = now ?? FALLBACK_NOW;
 
-  const stats = useMemo(() => {
-    let collected = 0;
-    let outstanding = 0;
-    let overdue = 0;
-    for (const e of invoices) {
-      if (e.status === "paid") collected += e.total;
-      if (e.status === "pending" || e.status === "overdue") outstanding += e.total;
-      if (e.status === "overdue") overdue += 1;
-    }
-    return { collected, outstanding, overdue };
-  }, [invoices]);
-
-  const recent = useMemo(
-    () =>
-      [...invoices]
-        .sort((a, b) => b.savedAt.localeCompare(a.savedAt))
-        .slice(0, 5),
-    [invoices],
+  const currencyList = useMemo(() => currencies(invoices), [invoices]);
+  const activeCurrency = currency ?? currencyList[0] ?? "INR";
+  const invoiceCount = useMemo(
+    () => invoices.filter((e) => (e.invoice.currency || "INR") === activeCurrency).length,
+    [invoices, activeCurrency],
   );
 
-  const topClients = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const e of invoices) {
-      const name = e.invoice.billToName?.trim() || "Unknown client";
-      map.set(name, (map.get(name) ?? 0) + e.total);
-    }
-    return [...map.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
-  }, [invoices]);
+  const stats = useMemo(
+    () => overview(invoices, activeCurrency, nowOrFallback),
+    [invoices, activeCurrency, nowOrFallback],
+  );
+  const months = range === "12" ? 12 : 6;
+  const series = useMemo(
+    () => monthlySeries(invoices, months, activeCurrency, nowOrFallback),
+    [invoices, months, activeCurrency, nowOrFallback],
+  );
+  const seriesTotals = useMemo(
+    () => ({
+      billed: series.reduce((a, p) => a + p.billed, 0),
+      collected: series.reduce((a, p) => a + p.collected, 0),
+    }),
+    [series],
+  );
+  const hasSeriesData = seriesTotals.billed > 0 || seriesTotals.collected > 0;
+  const clients = useMemo(
+    () => topClients(invoices, activeCurrency, 5),
+    [invoices, activeCurrency],
+  );
 
   const actions = (
     <>
@@ -125,9 +143,6 @@ export default function DashboardPage() {
         </section>
       ) : invoices.length === 0 ? (
         <section className="mx-auto flex max-w-md flex-col items-center rounded-3xl border border-[#E7E2D8] bg-[#FFFDF8] px-8 py-14 text-center shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
-          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[#0C6B4F]/10 text-[#0C6B4F]">
-            <InvoiceIcon size={32} />
-          </span>
           <h2 className="mt-5 text-2xl tracking-tight text-[#141412]" style={serif}>
             No invoices yet
           </h2>
@@ -144,102 +159,207 @@ export default function DashboardPage() {
         </section>
       ) : (
         <div className="space-y-5">
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-5 shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
-              <p className="text-xs font-bold tracking-widest text-stone-400 uppercase">
-                Collected
-              </p>
-              <p className="mt-2 text-3xl text-[#0C6B4F]" style={serif}>
-                {fmt(stats.collected)}
-              </p>
-              <p className="mt-1 text-xs text-stone-500">Sum of paid invoices</p>
+          {/* Overview — all time, per currency */}
+          <section className="rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-5 shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-xl tracking-tight text-[#141412]" style={serif}>
+                  Overview <span className="text-stone-400">· All time</span>
+                </h2>
+                <p className="mt-0.5 text-xs text-stone-500">
+                  {invoiceCount} invoice{invoiceCount === 1 ? "" : "s"} ·{" "}
+                  {activeCurrency}
+                </p>
+              </div>
+              <div className="w-36">
+                <CustomSelect
+                  id="overview-currency"
+                  label="Currency"
+                  value={activeCurrency}
+                  onChange={(v) => setCurrency(v)}
+                  options={currencyList.map((c) => ({ value: c, label: c }))}
+                />
+              </div>
             </div>
-            <div className="rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-5 shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
-              <p className="text-xs font-bold tracking-widest text-stone-400 uppercase">
-                Outstanding
-              </p>
-              <p className="mt-2 text-3xl text-[#141412]" style={serif}>
-                {fmt(stats.outstanding)}
-              </p>
-              <p className="mt-1 text-xs text-stone-500">
-                Pending + overdue invoices
-              </p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-3">
+              <div className="rounded-xl border border-[#E7E2D8] bg-white/60 p-4">
+                <p className="text-xs font-bold tracking-widest text-stone-400 uppercase">
+                  Collected
+                </p>
+                <p
+                  className="mt-2 font-mono text-3xl text-[#0C6B4F]"
+                  style={serif}
+                >
+                  {activeCurrency} {fmt(stats.collected)}
+                </p>
+                <p className="mt-1 text-xs text-stone-500">
+                  {stats.collectedCount} invoice
+                  {stats.collectedCount === 1 ? "" : "s"} · sum of paid
+                  invoices
+                </p>
+              </div>
+              <div className="rounded-xl border border-[#E7E2D8] bg-white/60 p-4">
+                <p className="text-xs font-bold tracking-widest text-stone-400 uppercase">
+                  Outstanding
+                </p>
+                <p className="mt-2 font-mono text-3xl text-[#141412]" style={serif}>
+                  {activeCurrency} {fmt(stats.outstanding)}
+                </p>
+                <p className="mt-1 text-xs text-stone-500">
+                  {stats.outstandingCount} invoice
+                  {stats.outstandingCount === 1 ? "" : "s"} · pending, draft
+                  and overdue
+                </p>
+              </div>
+              <div className="rounded-xl border border-[#E7E2D8] bg-white/60 p-4">
+                <p className="text-xs font-bold tracking-widest text-stone-400 uppercase">
+                  Overdue
+                </p>
+                <p className="mt-2 font-mono text-3xl text-red-700" style={serif}>
+                  {activeCurrency} {fmt(stats.overdue)}
+                </p>
+                <p className="mt-1 text-xs text-stone-500">
+                  {stats.overdueCount} invoice
+                  {stats.overdueCount === 1 ? "" : "s"} · past due date and
+                  unpaid
+                </p>
+              </div>
             </div>
-            <div className="rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-5 shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
-              <p className="text-xs font-bold tracking-widest text-stone-400 uppercase">
-                Overdue
-              </p>
-              <p className="mt-2 text-3xl text-red-700" style={serif}>
-                {stats.overdue}
-              </p>
-              <p className="mt-1 text-xs text-stone-500">Invoices needing follow-up</p>
-            </div>
-          </div>
-          <p className="text-xs text-stone-400">
-            Amounts are summed as recorded across currencies.
-          </p>
+          </section>
 
-          <div className="grid items-start gap-5 lg:grid-cols-2">
-            <section className="rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-5 shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
-              <h2 className="text-xl tracking-tight text-[#141412]" style={serif}>
-                Recent invoices
-              </h2>
-              <ul className="mt-4 divide-y divide-stone-100">
-                {recent.map((e) => (
-                  <li key={e.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-stone-900">
-                        {(e.invoice.prefix ?? "") + (e.invoice.serialNumber ?? "") ||
-                          e.invoice.invoiceNo}
-                      </p>
-                      <p className="truncate text-xs text-stone-500">
-                        {e.invoice.billToName} · {e.status}
-                      </p>
-                    </div>
-                    <span className="shrink-0 font-semibold text-[#0C6B4F]">
-                      {e.invoice.currency} {fmt(e.total)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href="/invoices"
-                className="mt-3 inline-block text-xs font-semibold text-[#0C6B4F] hover:underline"
-              >
-                View all invoices -&gt;
-              </Link>
-            </section>
+          {/* Monthly trends */}
+          <section className="rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-5 shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-xl tracking-tight text-[#141412]" style={serif}>
+                  Monthly trends <span className="text-stone-400">· {activeCurrency}</span>
+                </h2>
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-stone-700">
+                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#0C6B4F]" />
+                    Billed · {activeCurrency} {fmt(seriesTotals.billed)}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-stone-700">
+                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#141412]" />
+                    Collected · {activeCurrency} {fmt(seriesTotals.collected)}
+                  </span>
+                </div>
+              </div>
+              <div className="w-36">
+                <CustomSelect
+                  id="trends-range"
+                  label="Range"
+                  value={range}
+                  onChange={(v) => setRange(v === "12" ? "12" : "6")}
+                  options={[
+                    { value: "6", label: "Last 6 months" },
+                    { value: "12", label: "Last 12 months" },
+                  ]}
+                />
+              </div>
+            </div>
+            <div className="mt-4">
+              {hasSeriesData ? (
+                <TrendsAreaChart data={series} currency={activeCurrency} />
+              ) : (
+                <p className="rounded-xl border border-dashed border-[#E7E2D8] bg-white/60 px-4 py-10 text-center text-sm text-stone-500">
+                  No billed or collected amounts in this period.
+                </p>
+              )}
+            </div>
+            <details className="mt-3 rounded-xl border border-[#E7E2D8] bg-white/60">
+              <summary className="cursor-pointer px-4 py-2.5 text-xs font-semibold text-[#0C6B4F]">
+                Monthly figures
+              </summary>
+              <div className="overflow-x-auto border-t border-[#E7E2D8]">
+                <table className="w-full min-w-[420px] text-left text-sm">
+                  <thead>
+                    <tr className="text-xs tracking-wide text-stone-500 uppercase">
+                      <th className="px-4 py-2 font-semibold">Month</th>
+                      <th className="px-4 py-2 text-right font-semibold">Billed</th>
+                      <th className="px-4 py-2 text-right font-semibold">Collected</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100">
+                    {series.map((p) => (
+                      <tr key={p.month}>
+                        <td className="px-4 py-2 font-semibold text-stone-800">
+                          {p.month}
+                        </td>
+                        <td className="px-4 py-2 text-right font-mono text-xs text-stone-700">
+                          {fmt(p.billed)}
+                        </td>
+                        <td className="px-4 py-2 text-right font-mono text-xs text-stone-700">
+                          {fmt(p.collected)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </section>
 
-            <section className="rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-5 shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
-              <h2 className="text-xl tracking-tight text-[#141412]" style={serif}>
+          {/* Top clients */}
+          <section className="rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-5 shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
+            <div className="flex items-center gap-3">
+              <h2 className="flex-1 text-xl tracking-tight text-[#141412]" style={serif}>
                 Top clients
               </h2>
-              {topClients.length === 0 ? (
-                <p className="mt-3 text-sm text-stone-500">No client activity yet.</p>
-              ) : (
-                <ul className="mt-4 space-y-3">
-                  {topClients.map(([name, total]) => (
-                    <li key={name}>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="truncate font-semibold text-stone-900">{name}</span>
-                        <span className="shrink-0 font-semibold text-[#0C6B4F]">
-                          {fmt(total)}
-                        </span>
-                      </div>
-                      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-stone-100">
-                        <div
-                          className="h-full rounded-full bg-[#0C6B4F]"
-                          style={{
-                            width: `${Math.max(4, (total / Math.max(1, topClients[0][1])) * 100)}%`,
-                          }}
-                        />
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          </div>
+              <p className="text-xs text-stone-500">All time · {activeCurrency}</p>
+            </div>
+            {clients.length === 0 ? (
+              <p className="mt-3 text-sm text-stone-500">
+                No client activity in {activeCurrency} yet.
+              </p>
+            ) : (
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full min-w-[560px] text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-[#E7E2D8] text-xs tracking-wide text-stone-500 uppercase">
+                      <th className="px-2 py-2 font-semibold">Client</th>
+                      <th className="px-2 py-2 text-right font-semibold">Invoices</th>
+                      <th className="px-2 py-2 text-right font-semibold">Billed</th>
+                      <th className="px-2 py-2 text-right font-semibold">Collected</th>
+                      <th className="px-2 py-2 text-right font-semibold">Outstanding</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100">
+                    {clients.map((c) => (
+                      <tr key={`${c.name}\n${c.address}`}>
+                        <td className="max-w-[220px] truncate px-2 py-2.5 font-semibold text-stone-900">
+                          {c.name}
+                        </td>
+                        <td className="px-2 py-2.5 text-right text-stone-600">
+                          {c.invoices}
+                        </td>
+                        <td className="px-2 py-2.5 text-right font-mono text-xs font-semibold text-stone-800">
+                          {fmt(c.billed)}
+                        </td>
+                        <td className="px-2 py-2.5 text-right font-mono text-xs font-semibold text-[#0C6B4F]">
+                          {fmt(c.collected)}
+                        </td>
+                        <td className="px-2 py-2.5 text-right font-mono text-xs text-stone-600">
+                          {fmt(c.outstanding)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <Link
+              href="/invoices"
+              className="mt-3 inline-block text-xs font-semibold text-[#0C6B4F] hover:underline"
+            >
+              View invoices -&gt;
+            </Link>
+          </section>
+
+          <p className="text-xs text-stone-400">
+            Includes device + account invoices. Amounts reported separately
+            per currency.
+          </p>
         </div>
       )}
     </AppShell>

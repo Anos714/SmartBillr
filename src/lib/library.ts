@@ -10,6 +10,14 @@ export type SavedInvoice = {
   invoice: InvoiceData;
   status: InvoiceStatus;
   total: number;
+  /**
+   * When the invoice was marked paid (ISO timestamp). Set when status
+   * transitions to "paid", cleared when it leaves "paid".
+   * Remote (DB) rows have no paidAt column — see `fromRow` in
+   * `invoice-row.ts`, which derives it from `updatedAt` when paid.
+   * Absent on older local entries: fall back to `savedAt`.
+   */
+  paidAt?: string;
 };
 
 function isBrowser(): boolean {
@@ -64,6 +72,7 @@ function normalize(raw: unknown): SavedInvoice[] {
       invoice,
       status,
       total,
+      ...(typeof e.paidAt === "string" && e.paidAt ? { paidAt: e.paidAt } : {}),
     });
   }
   return out;
@@ -102,12 +111,14 @@ export function saveInvoice(
   status: InvoiceStatus = "draft",
 ): SavedInvoice {
   const list = readRaw();
+  const now = new Date().toISOString();
   const entry: SavedInvoice = {
     id: newId(),
-    savedAt: new Date().toISOString(),
+    savedAt: now,
     invoice: migrateInvoice(invoice),
     status,
     total: computeTotal(invoice),
+    ...(status === "paid" ? { paidAt: now } : {}),
   };
   list.push(entry);
   writeRaw(list);
@@ -118,7 +129,15 @@ export function updateStatus(id: string, status: InvoiceStatus): boolean {
   const list = readRaw();
   const idx = list.findIndex((e) => e.id === id);
   if (idx === -1) return false;
-  list[idx] = { ...list[idx], status };
+  const prev = list[idx];
+  // Track when an invoice became paid; clear when it leaves "paid".
+  const next: SavedInvoice = { ...prev, status };
+  if (status === "paid") {
+    if (!next.paidAt) next.paidAt = new Date().toISOString();
+  } else {
+    delete next.paidAt;
+  }
+  list[idx] = next;
   writeRaw(list);
   return true;
 }
@@ -141,6 +160,7 @@ export function duplicateInvoice(id: string): SavedInvoice | null {
     invoice: migrateInvoice(found.invoice),
     status: found.status,
     total: found.total,
+    ...(found.paidAt ? { paidAt: found.paidAt } : {}),
   };
   list.push(copy);
   writeRaw(list);
