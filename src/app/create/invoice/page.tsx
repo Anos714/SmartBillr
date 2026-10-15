@@ -28,12 +28,33 @@ const BASE_COLORS = [
 ];
 
 const inputCls =
-  "w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#0C6B4F] focus:ring-1 focus:ring-[#0C6B4F]";
+  "w-full rounded-xl border border-[#E7E2D8] bg-[#FFFDF8] px-3 py-2 text-sm text-[#141412] shadow-[inset_0_1px_2px_rgba(20,20,18,0.04)] outline-none transition placeholder:text-stone-400 focus:border-[#0C6B4F] focus:ring-2 focus:ring-[#0C6B4F]/25";
 const labelCls =
-  "mb-1 block text-xs font-semibold uppercase tracking-wide text-stone-500";
+  "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[#3f3c37]";
 const cardCls =
-  "rounded-2xl border border-stone-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(20,20,18,0.05)] sm:p-5";
-const titleCls = "font-serif text-lg font-bold text-stone-900";
+  "rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-4 shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)] sm:p-5";
+const titleCls = "text-lg font-bold text-stone-900";
+
+function StepBadge({ n }: { n: number }) {
+  return (
+    <span
+      aria-hidden
+      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#0C6B4F] to-[#4d9a7a] font-mono text-xs font-extrabold text-white shadow"
+    >
+      {n}
+    </span>
+  );
+}
+
+function GripHandle() {
+  return (
+    <span aria-hidden title="Drag (visual only)" className="flex cursor-grab flex-col gap-[3px] px-1 py-2 text-[#c9c3b6]">
+      <span className="flex gap-[3px]"><i className="h-1 w-1 rounded-full bg-current" /><i className="h-1 w-1 rounded-full bg-current" /></span>
+      <span className="flex gap-[3px]"><i className="h-1 w-1 rounded-full bg-current" /><i className="h-1 w-1 rounded-full bg-current" /></span>
+      <span className="flex gap-[3px]"><i className="h-1 w-1 rounded-full bg-current" /><i className="h-1 w-1 rounded-full bg-current" /></span>
+    </span>
+  );
+}
 
 function MetaRows({ target, title }: { target: MetaTarget; title: string }) {
   const invoice = useGuestStore((s) => s.invoice);
@@ -172,24 +193,24 @@ function EditorInner() {
   const fileName = `${displayNo || "invoice"}.pdf`;
 
   return (
-    <div className="min-h-screen bg-[#F7F5F0] pb-24 lg:pb-0">
+    <div className="paper-texture min-h-screen bg-[#F7F5F0] pb-24 lg:pb-0">
       {/* Floating dark topbar pill */}
       <div className="sticky top-3 z-30 px-4">
-        <header className="mx-auto flex max-w-5xl items-center gap-2 rounded-full bg-[#141412] py-2 pl-4 pr-2 text-white shadow-lg">
+        <header className="mx-auto flex max-w-5xl items-center gap-2 rounded-full border border-white/10 bg-[#141412] py-2 pr-2 pl-4 text-white shadow-xl">
           <BackButton href="/templates" className="border-white/15 text-white/80" />
           <span className="inline-flex items-center gap-1.5 truncate text-sm font-semibold">
-            <InvoiceIcon size={18} className="shrink-0 text-emerald-300" />
+            <InvoiceIcon size={18} className="shrink-0 text-[#D9F452]" />
             <span className="hidden sm:inline">{template.meta.name}</span>
             <span className="sm:hidden">{displayNo}</span>
           </span>
-          <span className="ml-auto hidden items-center gap-1 text-xs text-white/60 md:inline-flex">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          <span className="ml-auto hidden items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs text-white/60 md:inline-flex">
+            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
             Saved {savedLabel}
           </span>
           <button
             type="button"
             onClick={share}
-            className="inline-flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 text-sm font-medium text-white/90 hover:border-white/40"
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 text-sm font-medium text-white/90 transition hover:border-[#D9F452]/60 hover:text-[#D9F452]"
           >
             <Share2 className="h-4 w-4" /> {copied ? "Copied!" : "Share"}
           </button>
@@ -197,7 +218,7 @@ function EditorInner() {
             <PDFDownloadLink
               document={pdfDoc}
               fileName={fileName}
-              className="inline-flex items-center gap-1.5 rounded-full bg-[#0C6B4F] px-4 py-1.5 text-sm font-semibold text-white hover:bg-[#0a5a42]"
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#0C6B4F] px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-[#0a5a42] hover:shadow-[0_0_20px_-4px_#0C6B4F]"
             >
               {({ loading }) => (
                 <>
@@ -219,7 +240,7 @@ function EditorInner() {
         <section className="space-y-4">
           {/* Business */}
           <div className={cardCls}>
-            <h2 className={titleCls}>Business</h2>
+            <div className="flex items-center gap-2.5"><StepBadge n={1} /><h2 className={titleCls}>Business</h2></div>
             <p className="mb-3 text-xs text-stone-500">Your brand shown on the invoice.</p>
             <div className="space-y-3">
               <div>
@@ -290,7 +311,7 @@ function EditorInner() {
 
           {/* Client */}
           <div className={cardCls}>
-            <h2 className={titleCls}>Client</h2>
+            <div className="flex items-center gap-2.5"><StepBadge n={2} /><h2 className={titleCls}>Client</h2></div>
             <p className="mb-3 text-xs text-stone-500">Who is this invoice for?</p>
             <div className="space-y-3">
               <div>
@@ -324,7 +345,7 @@ function EditorInner() {
 
           {/* Invoice */}
           <div className={cardCls}>
-            <h2 className={titleCls}>Invoice</h2>
+            <div className="flex items-center gap-2.5"><StepBadge n={3} /><h2 className={titleCls}>Invoice</h2></div>
             <p className="mb-3 text-xs text-stone-500">
               Number preview: <span className="font-bold text-stone-800">{displayNo || "INV-0001"}</span>
             </p>
@@ -393,18 +414,21 @@ function EditorInner() {
 
           {/* Items */}
           <div className={cardCls}>
-            <h2 className={titleCls}>Items</h2>
+            <div className="flex items-center gap-2.5"><StepBadge n={4} /><h2 className={titleCls}>Items</h2></div>
             <p className="mb-3 text-xs text-stone-500">Name + description per row.</p>
             <div className="space-y-3">
               {invoice.items.map((it) => (
-                <div key={it.id} className="space-y-2 rounded-xl border border-stone-200 p-3">
-                  <input
-                    className={cn(inputCls, "font-semibold")}
-                    value={it.name}
-                    onChange={(e) => updateItem(it.id, { name: e.target.value })}
-                    placeholder="Item name"
-                    aria-label="Item name"
-                  />
+                <div key={it.id} className="group space-y-2 rounded-xl border border-[#E7E2D8] bg-white p-3 transition hover:border-[#0C6B4F]/40 hover:shadow-[0_8px_20px_-12px_rgba(12,107,79,0.4)]">
+                  <div className="flex items-center gap-1">
+                    <GripHandle />
+                    <input
+                      className={cn(inputCls, "font-semibold")}
+                      value={it.name}
+                      onChange={(e) => updateItem(it.id, { name: e.target.value })}
+                      placeholder="Item name"
+                      aria-label="Item name"
+                    />
+                  </div>
                   <textarea
                     className={inputCls}
                     rows={1}
@@ -451,7 +475,7 @@ function EditorInner() {
                   <button
                     type="button"
                     onClick={() => removeItem(it.id)}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-800"
+                    className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-stone-400 transition hover:bg-red-50 hover:text-red-600"
                   >
                     <Trash2 className="h-3.5 w-3.5" /> Remove
                   </button>
@@ -469,7 +493,7 @@ function EditorInner() {
 
           {/* Totals */}
           <div className={cardCls}>
-            <h2 className={titleCls}>Totals</h2>
+            <div className="flex items-center gap-2.5"><StepBadge n={5} /><h2 className={titleCls}>Totals</h2></div>
             <p className="mb-3 text-xs text-stone-500">Discounts, taxes, shipping & payment.</p>
             <div className="space-y-3">
               <div>
@@ -560,7 +584,7 @@ function EditorInner() {
 
           {/* Design */}
           <div className={cardCls}>
-            <h2 className={titleCls}>Design</h2>
+            <div className="flex items-center gap-2.5"><StepBadge n={6} /><h2 className={titleCls}>Design</h2></div>
             <p className="mb-3 flex items-center gap-1 text-xs text-stone-500">
               <PaletteIcon size={14} /> Template, color, mode & font.
             </p>
@@ -646,7 +670,17 @@ function EditorInner() {
 
         {/* Right: sticky live preview */}
         <section className="lg:sticky lg:top-20 lg:self-start">
-          <div className="overflow-auto rounded-2xl border border-stone-200 bg-white/60 p-4 sm:p-6">
+          <div className="mb-3 flex items-center justify-between px-1">
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#E7E2D8] bg-[#FFFDF8] px-3 py-1 font-mono text-[11px] font-bold tracking-widest text-[#0C6B4F] uppercase">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute h-full w-full animate-ping rounded-full bg-red-500 opacity-60" />
+                <span className="h-2 w-2 rounded-full bg-red-500" />
+              </span>
+              Live
+            </span>
+            <span className="font-mono text-[11px] text-stone-500">{displayNo || "INV-0001"}</span>
+          </div>
+          <div className="paper-texture overflow-auto rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-4 shadow-[0_30px_60px_-30px_rgba(20,20,18,0.45)] sm:p-6">
             <Preview data={invoice} totals={totals} watermark={true} />
           </div>
         </section>
