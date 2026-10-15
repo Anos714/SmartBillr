@@ -1,61 +1,127 @@
 import type { TemplateProps } from "./minimal-white";
-import { formatMoney } from "./minimal-white";
+import {
+  displayNo,
+  formatMoney,
+  itemTitle,
+  resolveAccent,
+  themeFontFamily,
+} from "./minimal-white";
 
 export function FreelancerPopPreview({ data, totals, watermark }: TemplateProps) {
-  const accent = data.accent || "#4f46e5";
+  const accent = resolveAccent(data, "#0C6B4F");
+  const dark = data.theme?.mode === "dark";
+  const fontFamily = themeFontFamily(data.theme?.font);
+  const no = displayNo(data);
   return (
     <div
-      className="mx-auto w-full max-w-[800px] overflow-hidden rounded-xl bg-white text-sm text-zinc-900 shadow-sm"
-      style={{ aspectRatio: "1 / 1.414" }}
+      className="mx-auto w-full max-w-[800px] overflow-hidden rounded-xl text-sm shadow-sm"
+      style={{
+        aspectRatio: "1 / 1.414",
+        backgroundColor: dark ? "#1c1917" : "#ffffff",
+        color: dark ? "#f5f4f0" : "#18181b",
+        fontFamily,
+      }}
     >
       <div className="p-8 sm:p-10" style={{ backgroundColor: accent }}>
         <div className="flex items-start justify-between gap-6 text-white">
           <div>
+            {data.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={data.logoUrl}
+                alt="Business logo"
+                className="mb-3 h-10 w-auto max-w-[160px] rounded-md bg-white/90 object-contain p-1"
+              />
+            ) : null}
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">
               Invoice
             </p>
-            <h1 className="mt-1 text-3xl font-extrabold">{data.invoiceNo}</h1>
+            <h1 className="mt-1 text-3xl font-extrabold">{no}</h1>
             <p className="mt-2 text-white/85">{data.fromName} · {data.fromEmail}</p>
             <p className="max-w-[320px] whitespace-pre-line text-white/75">{data.fromAddress}</p>
+            {(data.companyMeta ?? []).length > 0 && (
+              <div className="mt-2 text-xs text-white/75">
+                {(data.companyMeta ?? []).map((m, i) => (
+                  <p key={i}>
+                    {m.label ? `${m.label}: ` : ""}{m.value}
+                  </p>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="rounded-xl bg-white px-5 py-4 text-right shadow">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
+          <div
+            className="rounded-xl px-5 py-4 text-right shadow"
+            style={{ backgroundColor: dark ? "#292524" : "#ffffff" }}
+          >
+            <p
+              className="text-[11px] font-semibold uppercase tracking-widest"
+              style={{ color: dark ? "#d6d3d1" : "#a1a1aa" }}
+            >
               Total due
             </p>
-            <p className="text-2xl font-extrabold" style={{ color: accent }}>
+            <p className="text-2xl font-extrabold" style={{ color: dark ? "#ffffff" : accent }}>
               {formatMoney(data.currency, totals.grandTotal)}
             </p>
-            <p className="mt-1 text-xs text-zinc-500">Due {data.dueDate}</p>
+            <p className="mt-1 text-xs" style={{ color: dark ? "#a8a29e" : "#71717a" }}>
+              Due {data.dueDate}
+            </p>
           </div>
         </div>
       </div>
 
       <div className="p-8 sm:p-10">
-        <div className="flex flex-wrap justify-between gap-4 text-zinc-600">
+        <div className="flex flex-wrap justify-between gap-4" style={{ color: dark ? "#d6d3d1" : "#52525b" }}>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Bill to</p>
-            <p className="mt-1 font-semibold text-zinc-900">{data.billToName}</p>
+            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: dark ? "#a8a29e" : "#a1a1aa" }}>
+              Bill to
+            </p>
+            <p className="mt-1 font-semibold" style={{ color: dark ? "#fafaf9" : "#18181b" }}>
+              {data.billToName}
+            </p>
             <p>{data.billToEmail}</p>
             <p className="max-w-[280px] whitespace-pre-line">{data.billToAddress}</p>
+            {(data.clientMeta ?? []).map((m, i) => (
+              <p key={i} className="text-xs">
+                {m.label ? `${m.label}: ` : ""}{m.value}
+              </p>
+            ))}
           </div>
           <div className="text-right">
-            <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Details</p>
+            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: dark ? "#a8a29e" : "#a1a1aa" }}>
+              Details
+            </p>
             <p className="mt-1">Issued: {data.issueDate}</p>
             <p>Due: {data.dueDate}</p>
+            {data.paymentTerms ? <p>Payment: {data.paymentTerms}</p> : null}
             {data.gstin ? <p>GSTIN: {data.gstin}</p> : null}
           </div>
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-xl border border-zinc-100">
+        <div
+          className="mt-6 overflow-hidden rounded-xl border"
+          style={{ borderColor: dark ? "#292524" : "#f4f4f5" }}
+        >
           {data.items.map((it, i) => (
             <div
               key={it.id}
-              className={`flex items-center justify-between gap-4 px-4 py-3 ${i % 2 === 0 ? "bg-zinc-50/60" : "bg-white"}`}
+              className="flex items-center justify-between gap-4 px-4 py-3"
+              style={{
+                backgroundColor:
+                  i % 2 === 0 ? (dark ? "#292524" : "#fafaf9") : "transparent",
+              }}
             >
               <div>
-                <p className="font-medium">{it.desc}</p>
-                <p className="text-xs text-zinc-500">
+                <p className="font-medium" style={{ color: dark ? "#fafaf9" : "#18181b" }}>
+                  {itemTitle(it)}
+                </p>
+                {it.description ? (
+                  <p className="text-xs" style={{ color: dark ? "#a8a29e" : "#71717a" }}>
+                    {it.description}
+                  </p>
+                ) : null}
+                <p className="text-xs" style={{ color: dark ? "#a8a29e" : "#71717a" }}>
                   {it.qty} × {formatMoney(data.currency, it.rate)} · {it.taxPct}% tax
+                  {it.hsn ? ` · HSN ${it.hsn}` : ""}
                 </p>
               </div>
               <p className="font-bold">{formatMoney(data.currency, it.qty * it.rate)}</p>
@@ -64,7 +130,7 @@ export function FreelancerPopPreview({ data, totals, watermark }: TemplateProps)
         </div>
 
         <div className="mt-5 flex justify-end">
-          <div className="w-64 space-y-1.5 text-zinc-600">
+          <div className="w-64 space-y-1.5" style={{ color: dark ? "#d6d3d1" : "#52525b" }}>
             <div className="flex justify-between">
               <span>Subtotal</span>
               <span>{formatMoney(data.currency, totals.subtotal)}</span>
@@ -73,22 +139,68 @@ export function FreelancerPopPreview({ data, totals, watermark }: TemplateProps)
               <span>Discount</span>
               <span>-{formatMoney(data.currency, totals.discount)}</span>
             </div>
+            {(data.adjustments ?? []).map((a) => (
+              <div key={a.id} className="flex justify-between text-xs">
+                <span>
+                  {a.label || "Adjustment"}
+                  {a.type === "percentage" ? ` (${a.value}%)` : ""}
+                </span>
+                <span>
+                  {a.type === "percentage"
+                    ? formatMoney(data.currency, (totals.subtotal * a.value) / 100)
+                    : formatMoney(data.currency, a.value)}
+                </span>
+              </div>
+            ))}
             <div className="flex justify-between">
               <span>Tax</span>
               <span>{formatMoney(data.currency, totals.taxTotal)}</span>
             </div>
+            <div
+              className="flex justify-between rounded-lg px-3 py-2 text-sm font-bold text-white"
+              style={{ backgroundColor: accent }}
+            >
+              <span>Total</span>
+              <span>{formatMoney(data.currency, totals.grandTotal)}</span>
+            </div>
           </div>
         </div>
 
-        {(data.notes || data.terms) && (
-          <div className="mt-6 grid gap-4 text-xs text-zinc-500 sm:grid-cols-2">
-            {data.notes ? <p className="whitespace-pre-line rounded-lg bg-zinc-50 p-3">{data.notes}</p> : null}
-            {data.terms ? <p className="whitespace-pre-line rounded-lg bg-zinc-50 p-3">{data.terms}</p> : null}
+        {(data.paymentInfo ?? []).length > 0 && (
+          <div
+            className="mt-5 rounded-xl p-3 text-xs"
+            style={{ backgroundColor: dark ? "#292524" : "#fafaf9", color: dark ? "#d6d3d1" : "#52525b" }}
+          >
+            <p className="font-semibold uppercase tracking-wide">Payment info</p>
+            {(data.paymentInfo ?? []).map((m, i) => (
+              <p key={i} className="mt-1">
+                {m.label ? `${m.label}: ` : ""}{m.value}
+              </p>
+            ))}
           </div>
         )}
 
+        {(data.notes || data.terms) && (
+          <div className="mt-6 grid gap-4 text-xs sm:grid-cols-2" style={{ color: dark ? "#a8a29e" : "#71717a" }}>
+            {data.notes ? <p className="whitespace-pre-line rounded-lg p-3" style={{ backgroundColor: dark ? "#292524" : "#fafaf9" }}>{data.notes}</p> : null}
+            {data.terms ? <p className="whitespace-pre-line rounded-lg p-3" style={{ backgroundColor: dark ? "#292524" : "#fafaf9" }}>{data.terms}</p> : null}
+          </div>
+        )}
+
+        {data.signatureUrl ? (
+          <div className="mt-5 flex justify-end">
+            <div className="text-right">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={data.signatureUrl} alt="Signature" className="ml-auto h-12 w-auto object-contain" />
+              <p className="mt-1 text-[11px]" style={{ color: dark ? "#a8a29e" : "#71717a" }}>
+                Authorized signature
+              </p>
+            </div>
+          </div>
+        ) : null}
+
         {watermark ? (
-          <p className="mt-8 text-center text-[11px] text-zinc-400">
+          <p className="mt-8 text-center text-[11px]" style={{ color: dark ? "#78716c" : "#a1a1aa" }}>
             Made with SmartBillr
           </p>
         ) : null}
