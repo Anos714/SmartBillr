@@ -26,7 +26,7 @@ export default function PricingPage() {
           Start free. Upgrade only when premium templates pay for themselves.
         </p>
         <div className="mt-10">
-          <PricingCards freeHref="/create/invoice" proHref="/create/invoice" showDodoNote />
+          <PricingCards freeHref="/create/invoice" showDodoNote />
         </div>
       </main>
     </div>

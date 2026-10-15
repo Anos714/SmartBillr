@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/Brand";
-import { signIn } from "@/lib/auth-client";
+import { signIn, useSession } from "@/lib/auth-client";
 
 type Props = {
   templateName: string;
@@ -16,6 +16,10 @@ export function PaywallModal({ templateName, open, onClose }: Props) {
     null,
   );
   const [busy, setBusy] = useState(false);
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const { data: session, isPending } = useSession();
+  const signedIn = Boolean(session?.user);
 
   useEffect(() => {
     if (!open) return;
@@ -45,6 +49,33 @@ export function PaywallModal({ templateName, open, onClose }: Props) {
     }
   };
 
+  const handleCheckout = async () => {
+    setCheckoutBusy(true);
+    setCheckoutError(null);
+    try {
+      const res = await fetch("/api/dodo/checkout", { method: "POST" });
+      if (res.status === 401) {
+        await signIn.social({
+          provider: "google",
+          callbackURL: "/create/invoice",
+        });
+        return;
+      }
+      const data = (await res.json()) as {
+        checkout_url?: string;
+        error?: string;
+      };
+      if (!res.ok || !data.checkout_url) {
+        throw new Error(data.error ?? "checkout_failed");
+      }
+      window.location.href = data.checkout_url;
+    } catch {
+      setCheckoutError("Checkout failed — please try again.");
+    } finally {
+      setCheckoutBusy(false);
+    }
+  };
+
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -61,6 +92,22 @@ export function PaywallModal({ templateName, open, onClose }: Props) {
             <p className="block rounded-xl bg-stone-100 px-4 py-2.5 text-center text-xs font-semibold text-stone-500">
               Google setup pending — add keys in .env.local
             </p>
+          ) : signedIn ? (
+            <>
+              <button
+                type="button"
+                onClick={() => void handleCheckout()}
+                disabled={checkoutBusy || isPending}
+                className="block w-full rounded-xl bg-[#101210] px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-[#0C6B4F] disabled:opacity-50"
+              >
+                {checkoutBusy ? "Redirecting…" : "Unlock Pro — ₹999"}
+              </button>
+              {checkoutError ? (
+                <p role="alert" className="text-center text-xs font-semibold text-red-600">
+                  {checkoutError}
+                </p>
+              ) : null}
+            </>
           ) : (
             <button
               type="button"

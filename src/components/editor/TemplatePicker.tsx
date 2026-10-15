@@ -2,6 +2,7 @@
 
 import { Lock } from "lucide-react";
 import { TEMPLATE_CATALOG, type TemplateMeta } from "@/lib/templates";
+import { canUseTemplate } from "@/components/invoice-templates/registry";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -15,7 +16,7 @@ export function TemplatePicker({ selectedId, isPro = false, onSelect, onLocked }
   return (
     <div className="grid grid-cols-2 gap-3">
       {TEMPLATE_CATALOG.map((t) => {
-        const locked = !t.isFree && !isPro;
+        const locked = !canUseTemplate(isPro, t.id);
         const selected = t.id === selectedId;
         return (
           <button

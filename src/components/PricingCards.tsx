@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 
 import { ArrowRightIcon, CheckIcon } from "@/components/icons";
+import { signIn, useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 type Billing = "lifetime" | "monthly";
@@ -24,19 +26,98 @@ const COMPARE: { row: string; free: string; pro: string }[] = [
   { row: "Support", free: "Community", pro: "Priority" },
 ];
 
+/** Shown after Dodo redirects back with ?success=true. Owns its own status
+ * state; wrapped in Suspense by the caller so /pricing stays prerenderable. */
+function SuccessBanner() {
+  const searchParams = useSearchParams();
+  const [proActive, setProActive] = useState<boolean | null>(null);
+  const [refreshBusy, setRefreshBusy] = useState(false);
+
+  if (searchParams.get("success") !== "true") return null;
+
+  const handleRefreshStatus = async () => {
+    setRefreshBusy(true);
+    try {
+      const res = await fetch("/api/billing/status");
+      const data = (await res.json()) as { pro?: boolean };
+      setProActive(Boolean(data.pro));
+    } catch {
+      setProActive(false);
+    } finally {
+      setRefreshBusy(false);
+    }
+  };
+
+  return (
+    <div
+      role="status"
+      className="mx-auto mb-8 flex max-w-2xl flex-col items-center gap-3 rounded-2xl border border-[#0C6B4F]/30 bg-[#0C6B4F]/5 px-6 py-5 text-center"
+    >
+      <p className="text-sm font-semibold text-[#0C6B4F]">
+        Payment received — activating Pro (refresh in a few seconds)
+      </p>
+      <button
+        type="button"
+        onClick={() => void handleRefreshStatus()}
+        disabled={refreshBusy}
+        className="rounded-full bg-[#0C6B4F] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#0a5a42] disabled:opacity-50"
+      >
+        {refreshBusy
+          ? "Checking…"
+          : proActive === true
+            ? "Pro active ✓"
+            : "Refresh status"}
+      </button>
+    </div>
+  );
+}
+
 export function PricingCards({
   freeHref = "/create/invoice",
-  proHref = "/create/invoice",
   showDodoNote = true,
 }: {
   freeHref?: string;
-  proHref?: string;
   showDodoNote?: boolean;
 }) {
   const [billing, setBilling] = useState<Billing>("lifetime");
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const { data: session } = useSession();
+
+  const handleGoPro = async () => {
+    if (checkoutBusy) return;
+    if (!session?.user) {
+      await signIn.social({ provider: "google", callbackURL: "/pricing" });
+      return;
+    }
+    setCheckoutBusy(true);
+    setCheckoutError(null);
+    try {
+      const res = await fetch("/api/dodo/checkout", { method: "POST" });
+      if (res.status === 401) {
+        await signIn.social({ provider: "google", callbackURL: "/pricing" });
+        return;
+      }
+      const data = (await res.json()) as {
+        checkout_url?: string;
+        error?: string;
+      };
+      if (!res.ok || !data.checkout_url) {
+        throw new Error(data.error ?? "checkout_failed");
+      }
+      window.location.href = data.checkout_url;
+    } catch {
+      setCheckoutError("Checkout failed — please try again.");
+    } finally {
+      setCheckoutBusy(false);
+    }
+  };
 
   return (
     <div>
+      <Suspense fallback={null}>
+        <SuccessBanner />
+      </Suspense>
       <div
         className="mx-auto flex w-fit items-center gap-1 rounded-full border border-[#E7E2D8] bg-[#FFFDF8] p-1"
         role="group"
@@ -118,14 +199,21 @@ export function PricingCards({
               </li>
             ))}
           </ul>
-          <motion.a
+          <motion.button
+            type="button"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            href={proHref}
-            className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#D9F452] px-8 py-3 text-base font-bold text-[#101210]"
+            onClick={() => void handleGoPro()}
+            disabled={checkoutBusy}
+            className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#D9F452] px-8 py-3 text-base font-bold text-[#101210] disabled:opacity-60"
           >
-            Go Pro <ArrowRightIcon size={18} />
-          </motion.a>
+            {checkoutBusy ? "Redirecting…" : "Go Pro"} <ArrowRightIcon size={18} />
+          </motion.button>
+          {checkoutError ? (
+            <p role="alert" className="mt-2 text-center text-sm font-semibold text-[#FFD9D9]">
+              {checkoutError}
+            </p>
+          ) : null}
         </motion.article>
       </div>
 
@@ -164,7 +252,7 @@ export function PricingCards({
       </p>
       {showDodoNote ? (
         <p className="mt-2 text-center text-sm text-[#6B675E]">
-          Dodo checkout coming in Step 5 — buttons currently link /create/invoice.
+          Test mode — Dodo checkout uses test cards; no real charge.
         </p>
       ) : null}
     </div>

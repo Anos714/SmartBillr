@@ -631,7 +631,7 @@ export default function Home() {
             </p>
           </motion.div>
           <div className="mt-10">
-            <PricingCards freeHref="/create/invoice" proHref="/pricing" showDodoNote={false} />
+            <PricingCards freeHref="/create/invoice" showDodoNote={false} />
           </div>
         </section>
 

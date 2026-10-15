@@ -20,6 +20,7 @@ import {
 import { calcTotals, InvoiceSchema, invoiceDisplayNo, migrateInvoice } from "@/lib/invoice";
 import { getInvoice, saveInvoice } from "@/lib/library";
 import { useGuestStore, type MetaTarget } from "@/lib/guest-store";
+import { useSession } from "@/lib/auth-client";
 import { TEMPLATE_CATALOG, type TemplateMeta } from "@/lib/templates";
 import { getTemplate, canUseTemplate } from "@/components/invoice-templates/registry";
 import { PaywallModal } from "@/components/editor/PaywallModal";
@@ -177,6 +178,9 @@ function EditorInner() {
   } = useGuestStore();
   const [locked, setLocked] = useState<TemplateMeta | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [proStatus, setProStatus] = useState<boolean | null>(null);
+  const { data: session } = useSession();
+  const isPro = session?.user ? proStatus === true : false;
   const [savedDefault, setSavedDefault] = useState(false);
   const [view, setView] = useState<ViewMode>("both");
   const [openSection, setOpenSection] = useState("company");
@@ -213,14 +217,30 @@ function EditorInner() {
   }, [searchParams]);
 
   useEffect(() => {
+    if (!session?.user) return;
+    let cancelled = false;
+    fetch("/api/billing/status")
+      .then((r) => r.json())
+      .then((j: { pro?: boolean }) => {
+        if (!cancelled) setProStatus(Boolean(j.pro));
+      })
+      .catch(() => {
+        if (!cancelled) setProStatus(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
+
+  useEffect(() => {
     const param = searchParams.get("template");
     if (!param) return;
     const meta = TEMPLATE_CATALOG.find((t) => t.id === param);
-    if (meta && canUseTemplate(false, meta.id) && invoice.templateId !== meta.id) {
+    if (meta && canUseTemplate(isPro, meta.id) && invoice.templateId !== meta.id) {
       setInvoice({ templateId: meta.id, accent: meta.accent });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, isPro]);
 
   const totals = useMemo(
     () =>
@@ -238,6 +258,8 @@ function EditorInner() {
   const template = getTemplate(invoice.templateId);
   const PdfDocument = template.PdfDocument;
   const Preview = template.Preview;
+  // Pro PDFs ship with no watermark; guests and free users keep it.
+  const watermark = !isPro;
 
   const savedLabel =
     mounted && updatedAt
@@ -312,7 +334,7 @@ function EditorInner() {
     setPdfBusy(true);
     try {
       const blob = await pdf(
-        <PdfDocument data={invoice} totals={totals} watermark={true} />,
+        <PdfDocument data={invoice} totals={totals} watermark={watermark} />,
       ).toBlob();
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank", "noopener,noreferrer");
@@ -341,7 +363,7 @@ function EditorInner() {
   };
 
   const pdfDoc = mounted ? (
-    <PdfDocument data={invoice} totals={totals} watermark={true} />
+    <PdfDocument data={invoice} totals={totals} watermark={watermark} />
   ) : null;
   const fileName = `${displayNo || "invoice"}.pdf`;
 
@@ -561,7 +583,7 @@ function EditorInner() {
                   options={TEMPLATE_CATALOG.map((t) => ({
                     value: t.id,
                     label: t.isFree ? t.name : `${t.name} — PRO`,
-                    locked: !canUseTemplate(false, t.id),
+                    locked: !canUseTemplate(isPro, t.id),
                   }))}
                 />
               </div>
@@ -980,7 +1002,7 @@ function EditorInner() {
             id="invoice-preview"
             className="paper-texture overflow-auto rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-4 shadow-[0_30px_60px_-30px_rgba(20,20,18,0.45)] sm:p-6"
           >
-            <Preview data={invoice} totals={totals} watermark={true} />
+            <Preview data={invoice} totals={totals} watermark={watermark} />
           </div>
           <dl className="mt-4 space-y-1.5 rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-4 text-sm shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
             <div className="flex justify-between text-stone-600">
