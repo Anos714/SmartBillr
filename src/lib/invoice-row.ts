@@ -80,6 +80,15 @@ export function fromRow(row: InvoiceRow): SavedInvoice {
       : typeof row.createdAt === "string"
         ? row.createdAt
         : new Date().toISOString();
+  // No paidAt column in the DB (by design — no migration). Derive it:
+  // when status is paid, Paid At = updatedAt (set on every PATCH);
+  // otherwise undefined. Clients fall back to savedAt when missing.
+  const updatedAt =
+    row.updatedAt instanceof Date
+      ? row.updatedAt.toISOString()
+      : typeof row.updatedAt === "string"
+        ? row.updatedAt
+        : undefined;
 
   const invoice = migrateInvoice({
     fromName: typeof from.fromName === "string" ? from.fromName : "",
@@ -121,5 +130,6 @@ export function fromRow(row: InvoiceRow): SavedInvoice {
     invoice,
     status,
     total,
+    ...(status === "paid" && updatedAt ? { paidAt: updatedAt } : {}),
   };
 }
