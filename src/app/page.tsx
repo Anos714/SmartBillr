@@ -1,9 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
+import {
+  motion,
+  useInView,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+} from "motion/react";
 
-import { Wordmark } from "@/components/Brand";
+import { Logo, Wordmark } from "@/components/Brand";
+import { PricingCards } from "@/components/PricingCards";
+import { TemplatesGrid } from "@/components/TemplatesGrid";
 import {
   ArrowRightIcon,
   BoltIcon,
@@ -17,7 +25,6 @@ import {
   StarIcon,
   TemplatesIcon,
 } from "@/components/icons";
-import { FREE_COUNT, TEMPLATE_CATALOG } from "@/lib/templates";
 import { cn } from "@/lib/utils";
 
 const FAQS = [
@@ -76,21 +83,44 @@ const faqJsonLd = {
   })),
 };
 
-const FEATURES = [
-  {
-    icon: PaletteIcon,
-    title: "Beautiful by default",
-    body: "Eight designer-crafted templates with real typography, spacing, and color — invoices clients actually enjoy opening.",
-  },
+const BENTO = [
   {
     icon: InvoiceIcon,
-    title: "Free forever basics",
-    body: "Two full templates, unlimited invoices, and PDF downloads. No trial, no card, no catch — free means free.",
+    title: "Live preview editor",
+    body: "Type on the left, watch a pixel-perfect invoice render on the right. What you see is exactly what your client gets.",
+    span: "md:col-span-4",
+    mock: true,
+  },
+  {
+    icon: BoltIcon,
+    title: "No-signup guest mode",
+    body: "Your first invoice in under two minutes. No account, no card, no friction.",
+    span: "md:col-span-2",
   },
   {
     icon: ShieldIcon,
-    title: "Safe & private",
-    body: "Work as a guest without an account. Your data stays yours — nothing stored unless you ask us to.",
+    title: "GST invoice for India",
+    body: "GSTIN, HSN codes, and automatic tax splits keep every bill compliant.",
+    span: "md:col-span-4",
+    gst: true,
+  },
+  {
+    icon: TemplatesIcon,
+    title: "8 designer templates",
+    body: "From Minimal White to Bold Dark — two free forever, six premium.",
+    span: "md:col-span-2",
+  },
+  {
+    icon: PaletteIcon,
+    title: "Cloudinary assets",
+    body: "Drop in your logo and signature. Crisp on screen, razor-sharp in print.",
+    span: "md:col-span-3",
+  },
+  {
+    icon: LockIcon,
+    title: "Private by design",
+    body: "Invoices render in your browser. Nothing stored unless you ask us to.",
+    span: "md:col-span-3",
   },
 ];
 
@@ -129,6 +159,29 @@ const reveal = {
   initial: { opacity: 0, y: 24 },
   whileInView: { opacity: 1, y: 0 },
 };
+
+function TotalCountUp({ value }: { value: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-40px" });
+  const reduceMotion = useReducedMotion();
+  const mv = useMotionValue(0);
+  const spring = useSpring(mv, { stiffness: 55, damping: 16 });
+  const [display, setDisplay] = useState(0);
+  const instantValue = inView && reduceMotion;
+
+  useEffect(() => {
+    if (inView && !reduceMotion) {
+      mv.set(value);
+    }
+  }, [inView, reduceMotion, value, mv]);
+
+  useEffect(() => {
+    const unsub = spring.on("change", (v) => setDisplay(Math.round(v)));
+    return unsub;
+  }, [spring]);
+
+  return <span ref={ref}>₹{(instantValue ? value : display).toLocaleString("en-IN")}</span>;
+}
 
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
@@ -182,7 +235,7 @@ export default function Home() {
           className="mx-auto flex h-14 max-w-4xl items-center justify-between rounded-full bg-[#101210] py-2 pr-2 pl-5 text-[#F7F5F0] shadow-xl"
         >
           <a href="#" aria-label="SmartBillr home" className="text-[#F7F5F0]">
-            <Wordmark size={28} />
+            <Wordmark size={28} tone="dark" />
           </a>
           <nav aria-label="Main" className="hidden items-center gap-7 text-sm text-white/70 md:flex">
             <a href="#features" className="transition-colors hover:text-[#D9F452]">
@@ -288,7 +341,7 @@ export default function Home() {
             </motion.a>
           </motion.div>
 
-          {/* Invoice mockup */}
+          {/* Realistic invoice preview */}
           <motion.div
             initial={{ opacity: 0, y: 48, rotate: -2 }}
             animate={{ opacity: 1, y: 0, rotate: -1.5 }}
@@ -296,57 +349,99 @@ export default function Home() {
             className="relative mx-auto mt-16 max-w-3xl"
           >
             <div
-              className="overflow-hidden rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] text-left shadow-2xl"
+              className="relative rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-6 text-left shadow-2xl sm:p-8"
               role="img"
-              aria-label="Preview of a SmartBillr invoice"
+              aria-label="Preview of a SmartBillr tax invoice for PixelWorks Studio billed to Acme Corp, total 48,200 rupees, marked paid"
             >
-              <div className="flex items-center gap-1.5 border-b border-[#E7E2D8] bg-[#EFE9DC] px-4 py-3">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#0C6B4F]/40" />
-                <span className="h-2.5 w-2.5 rounded-full bg-[#0C6B4F]/25" />
-                <span className="h-2.5 w-2.5 rounded-full bg-[#0C6B4F]/15" />
-                <span className="ml-3 hidden h-5 flex-1 rounded-md bg-[#F7F5F0] sm:block" />
+              <span className="absolute top-1/2 -right-3 -translate-y-1/2 rotate-90 rounded-md border-2 border-[#0C6B4F] px-3 py-1 text-sm font-extrabold tracking-[0.2em] text-[#0C6B4F] uppercase">
+                Paid
+              </span>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <Logo size={40} />
+                  <div>
+                    <p className="text-sm font-bold">PixelWorks Studio</p>
+                    <p className="text-xs text-[#6B675E]">hello@pixelworks.in • GSTIN 27ABCDE1234F1Z5</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-extrabold tracking-wide">TAX INVOICE</p>
+                  <p className="mt-1 inline-block rounded-full bg-[#0C6B4F]/10 px-3 py-0.5 font-mono text-xs font-bold text-[#0C6B4F]">
+                    INV-2026-0001
+                  </p>
+                </div>
               </div>
-              <div className="space-y-4 p-6 sm:p-8" aria-hidden>
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <div className="h-5 w-44 rounded-md bg-[#0C6B4F]" />
-                    <div className="h-3 w-28 rounded bg-[#EFE9DC]" />
-                  </div>
-                  <div className="rounded-full bg-[#D9F452] px-3 py-1 text-xs font-bold text-[#101210]">
-                    INV-2026-048
-                  </div>
+
+              <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-sm">
+                <div className="rounded-xl border border-[#E7E2D8] p-3">
+                  <p className="text-[11px] font-bold tracking-wider text-[#6B675E] uppercase">From</p>
+                  <p className="mt-0.5 font-semibold">PixelWorks Studio</p>
+                  <p className="text-xs text-[#6B675E]">Mumbai, India</p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2 rounded-xl border border-[#E7E2D8] p-3">
-                    <div className="h-3 w-16 rounded bg-[#EFE9DC]" />
-                    <div className="h-3 w-24 rounded bg-[#EFE9DC]" />
-                  </div>
-                  <div className="space-y-2 rounded-xl border border-[#E7E2D8] p-3">
-                    <div className="h-3 w-16 rounded bg-[#EFE9DC]" />
-                    <div className="h-3 w-24 rounded bg-[#EFE9DC]" />
-                  </div>
+                <span aria-hidden className="text-[#0C6B4F]">
+                  →
+                </span>
+                <div className="rounded-xl border border-[#E7E2D8] p-3">
+                  <p className="text-[11px] font-bold tracking-wider text-[#6B675E] uppercase">Bill to</p>
+                  <p className="mt-0.5 font-semibold">Acme Corp</p>
+                  <p className="text-xs text-[#6B675E]">Bengaluru, India</p>
                 </div>
-                <div className="space-y-2">
-                  <div className="h-8 rounded-md bg-[#F7F5F0]" />
-                  <div className="h-8 rounded-md bg-[#F7F5F0]" />
-                  <div className="h-8 rounded-md bg-[#F7F5F0]" />
+              </div>
+
+              <div className="mt-4 space-y-2 text-sm">
+                <div className="flex items-center justify-between rounded-lg bg-[#F7F5F0] px-3 py-2">
+                  <span>
+                    <span className="font-semibold">Logo Design</span>{" "}
+                    <span className="text-xs text-[#6B675E]">1 × ₹25,000</span>
+                  </span>
+                  <span className="font-mono font-bold">₹25,000</span>
                 </div>
-                <div className="flex justify-end">
-                  <div className="w-44 space-y-2">
-                    <div className="h-3 rounded bg-[#EFE9DC]" />
-                    <div className="h-3 rounded bg-[#EFE9DC]" />
-                    <div className="h-6 rounded-md bg-[#0C6B4F]" />
-                  </div>
+                <div className="flex items-center justify-between rounded-lg bg-[#F7F5F0] px-3 py-2">
+                  <span>
+                    <span className="font-semibold">UI Screens</span>{" "}
+                    <span className="text-xs text-[#6B675E]">8 × ₹3,500</span>
+                  </span>
+                  <span className="font-mono font-bold">₹28,000</span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg bg-[#F7F5F0] px-3 py-2">
+                  <span>
+                    <span className="font-semibold">GST</span>{" "}
+                    <span className="text-xs text-[#6B675E]">18% • CGST/SGST split</span>
+                  </span>
+                  <span className="font-mono font-bold">incl.</span>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-end justify-between gap-4">
+                <div>
+                  <svg viewBox="0 0 120 36" aria-hidden className="h-9 w-28 text-[#0C6B4F]">
+                    <path
+                      d="M4 26 C 20 26, 24 8, 34 14 S 44 30, 54 20 S 62 10, 72 16 S 88 28, 100 18 S 110 12, 116 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <p className="text-[11px] text-[#6B675E]">Authorised signatory</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[11px] font-bold tracking-wider text-[#6B675E] uppercase">
+                    Total due
+                  </p>
+                  <p className="font-mono text-3xl font-extrabold text-[#0C6B4F]">
+                    <TotalCountUp value={48200} />
+                  </p>
                 </div>
               </div>
             </div>
             <div className="animate-floaty absolute -top-5 -right-3 flex items-center gap-2 rounded-full bg-[#101210] px-4 py-2 text-sm font-semibold text-[#D9F452] shadow-xl sm:-right-8">
               <CheckIcon size={16} />
-              Paid ✓ ₹48,200
+              Paid ✓ ₹48,200 received
             </div>
             <div className="animate-floaty-slow absolute -bottom-5 -left-3 flex items-center gap-2 rounded-full border border-[#E7E2D8] bg-[#FFFDF8] px-4 py-2 text-sm font-semibold text-[#0C6B4F] shadow-xl sm:-left-8">
               <BoltIcon size={16} />
-              GST-ready
+              GST-ready ✓ CGST/SGST
             </div>
           </motion.div>
         </section>
@@ -378,7 +473,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Features — dark cards */}
+        {/* Features — bento grid */}
         <section id="features" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
           <motion.div {...reveal} viewport={{ once: true, margin: "-80px" }}>
             <h2
@@ -393,15 +488,18 @@ export default function Home() {
               working than wrestling with billing software.
             </p>
           </motion.div>
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {FEATURES.map((f, i) => (
+          <div className="mt-10 grid gap-6 md:grid-cols-6">
+            {BENTO.map((f, i) => (
               <motion.article
                 key={f.title}
                 {...reveal}
                 viewport={{ once: true, margin: "-80px" }}
-                transition={{ delay: i * 0.1, duration: 0.5 }}
+                transition={{ delay: (i % 3) * 0.08, duration: 0.5 }}
                 whileHover={{ y: -6 }}
-                className="rounded-3xl bg-[#101210] p-7 text-[#F7F5F0] shadow-lg"
+                className={cn(
+                  "rounded-3xl border border-[#101210]/10 bg-[#101210] p-7 text-[#F7F5F0] shadow-lg transition-shadow hover:border-[#D9F452]/60 hover:shadow-[0_0_40px_-12px_#D9F45288]",
+                  f.span,
+                )}
               >
                 <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#D9F452] text-[#101210]">
                   <f.icon size={22} />
@@ -413,6 +511,31 @@ export default function Home() {
                   {f.title}
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-white/65">{f.body}</p>
+                {f.mock ? (
+                  <div aria-hidden className="mt-5 rounded-2xl border border-white/10 bg-white/[0.05] p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="h-3 w-1/3 rounded-full bg-[#D9F452]/80" />
+                      <div className="h-5 w-20 rounded-full bg-white/10" />
+                    </div>
+                    <div className="mt-3 space-y-1.5">
+                      <div className="h-6 rounded-md bg-white/10" />
+                      <div className="h-6 rounded-md bg-white/10" />
+                      <div className="ml-auto h-6 w-1/3 rounded-md bg-[#0C6B4F]" />
+                    </div>
+                  </div>
+                ) : null}
+                {f.gst ? (
+                  <div aria-hidden className="mt-5 flex flex-wrap gap-2">
+                    {["GSTIN ✓", "CGST 9%", "SGST 9%", "HSN-coded"].map((chip) => (
+                      <span
+                        key={chip}
+                        className="rounded-full border border-[#D9F452]/40 bg-[#D9F452]/10 px-3 py-1 text-xs font-bold text-[#D9F452]"
+                      >
+                        {chip}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
               </motion.article>
             ))}
           </div>
@@ -432,55 +555,11 @@ export default function Home() {
                 Pick a template, <em className="text-[#D9F452]">make it yours</em>
               </h2>
               <p className="mx-auto mt-3 max-w-xl text-center text-white/60">
-                {FREE_COUNT} free forever. Upgrade for the full premium collection.
+                2 free forever. Upgrade for the full premium collection.
               </p>
             </motion.div>
-            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {TEMPLATE_CATALOG.map((t, i) => (
-                <motion.article
-                  key={t.id}
-                  {...reveal}
-                  viewport={{ once: true, margin: "-40px" }}
-                  transition={{ delay: (i % 4) * 0.08, duration: 0.5 }}
-                  whileHover={{ y: -6 }}
-                  className="group flex flex-col rounded-2xl border border-white/10 bg-white/[0.04] p-5 transition-shadow hover:shadow-[0_0_32px_-8px_#D9F45266]"
-                >
-                  <div
-                    className="h-28 rounded-xl border border-white/10"
-                    style={{
-                      background: `linear-gradient(135deg, ${t.accent}55, ${t.accent}14)`,
-                    }}
-                    aria-hidden
-                  >
-                    <div className="space-y-1.5 p-4">
-                      <div className="h-3 w-2/3 rounded" style={{ backgroundColor: t.accent }} />
-                      <div className="h-2 w-1/2 rounded bg-white/20" />
-                      <div className="h-2 w-3/4 rounded bg-white/20" />
-                      <div className="h-2 w-2/3 rounded bg-white/20" />
-                    </div>
-                  </div>
-                  <div className="mt-4 flex items-center gap-2">
-                    {t.isFree ? (
-                      <span className="rounded-full bg-[#D9F452] px-2.5 py-0.5 text-xs font-bold text-[#101210]">
-                        FREE
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-bold text-[#D9F452]">
-                        <LockIcon size={12} />
-                        PRO
-                      </span>
-                    )}
-                    <h3 className="text-sm font-semibold">{t.name}</h3>
-                  </div>
-                  <p className="mt-1.5 flex-1 text-sm text-white/55">{t.tagline}</p>
-                  <a
-                    href={`/create/invoice?template=${t.id}`}
-                    className="mt-4 inline-flex w-full items-center justify-center rounded-full border border-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:border-[#D9F452] hover:text-[#D9F452]"
-                  >
-                    {t.isFree ? "Use Template" : "Preview"}
-                  </a>
-                </motion.article>
-              ))}
+            <div className="mt-10">
+              <TemplatesGrid />
             </div>
           </div>
         </section>
@@ -498,62 +577,8 @@ export default function Home() {
               Start free. Upgrade only when premium templates pay for themselves.
             </p>
           </motion.div>
-          <div className="mt-10 grid gap-6 md:grid-cols-2">
-            <motion.article
-              {...reveal}
-              viewport={{ once: true, margin: "-80px" }}
-              whileHover={{ y: -4 }}
-              className="flex flex-col rounded-3xl border border-[#E7E2D8] bg-[#FFFDF8] p-8 shadow-sm"
-            >
-              <h3 className="text-lg font-semibold">Free</h3>
-              <p className="mt-2 font-mono text-4xl font-extrabold">
-                ₹0<span className="font-sans text-base font-normal text-[#6B675E]"> forever</span>
-              </p>
-              <ul className="mt-6 flex-1 space-y-3 text-sm">
-                {["2 free templates", "Unlimited invoices", "PDF downloads with watermark"].map((li) => (
-                  <li key={li} className="flex items-center gap-2">
-                    <CheckIcon size={16} className="text-[#0C6B4F]" /> {li}
-                  </li>
-                ))}
-              </ul>
-              <a
-                href="/pricing"
-                className="mt-8 inline-flex w-full items-center justify-center rounded-full border border-[#E7E2D8] bg-[#F7F5F0] px-8 py-3 text-base font-semibold transition-colors hover:bg-[#EFE9DC]"
-              >
-                Start Free
-              </a>
-            </motion.article>
-            <motion.article
-              {...reveal}
-              viewport={{ once: true, margin: "-80px" }}
-              transition={{ delay: 0.1 }}
-              whileHover={{ y: -4 }}
-              className="relative flex flex-col rounded-3xl bg-[#0C6B4F] p-8 text-white shadow-2xl"
-            >
-              <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-[#D9F452] px-4 py-1 text-xs font-bold whitespace-nowrap text-[#101210]">
-                MOST POPULAR
-              </span>
-              <h3 className="text-lg font-semibold">Pro</h3>
-              <p className="mt-2 font-mono text-4xl font-extrabold">
-                ₹999
-                <span className="font-sans text-base font-normal text-white/70"> lifetime or ₹199/mo</span>
-              </p>
-              <ul className="mt-6 flex-1 space-y-3 text-sm">
-                {["All 8 templates", "No watermark", "Custom logo", "GST invoice template"].map((li) => (
-                  <li key={li} className="flex items-center gap-2">
-                    <CheckIcon size={16} className="text-[#D9F452]" /> {li}
-                  </li>
-                ))}
-              </ul>
-              <motion.a
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                href="/pricing"
-                className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#D9F452] px-8 py-3 text-base font-bold text-[#101210] transition-transform"
-              >
-                Go Pro <ArrowRightIcon size={18} />
-              </motion.a>
-            </motion.article>
+          <div className="mt-10">
+            <PricingCards freeHref="/create/invoice" proHref="/pricing" showDodoNote={false} />
           </div>
         </section>
 
@@ -662,7 +687,7 @@ export default function Home() {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 px-4 py-10 sm:flex-row sm:px-6">
           <div className="text-center sm:text-left">
             <a href="#" aria-label="SmartBillr home" className="flex items-center justify-center sm:justify-start">
-              <Wordmark size={28} />
+              <Wordmark size={28} tone="dark" />
             </a>
             <p className="mt-2 text-sm text-white/55">
               Beautiful invoices in minutes. Free for basics.

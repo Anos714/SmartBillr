@@ -1,11 +1,11 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { Trash2, Share2 } from "lucide-react";
 import { calcTotals, invoiceDisplayNo } from "@/lib/invoice";
+import { BackButton } from "@/components/BackButton";
 import { useGuestStore, type MetaTarget } from "@/lib/guest-store";
 import { TEMPLATE_CATALOG, type TemplateMeta } from "@/lib/templates";
 import { getTemplate, canUseTemplate } from "@/components/invoice-templates/registry";
@@ -176,12 +176,7 @@ function EditorInner() {
       {/* Floating dark topbar pill */}
       <div className="sticky top-3 z-30 px-4">
         <header className="mx-auto flex max-w-5xl items-center gap-2 rounded-full bg-[#141412] py-2 pl-4 pr-2 text-white shadow-lg">
-          <Link
-            href="/templates"
-            className="hidden text-sm font-medium text-white/70 hover:text-white sm:inline"
-          >
-            ← Templates
-          </Link>
+          <BackButton href="/templates" className="border-white/15 text-white/80" />
           <span className="inline-flex items-center gap-1.5 truncate text-sm font-semibold">
             <InvoiceIcon size={18} className="shrink-0 text-emerald-300" />
             <span className="hidden sm:inline">{template.meta.name}</span>

@@ -34,9 +34,19 @@ function Base({
 export function BoltIcon(props: IconProps) {
   return (
     <Base {...props}>
-      <path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2Z" fill="currentColor" stroke="none" />
-      <path d="M13 2 4.5 13.5H11L9.5 22" fill="currentColor" opacity={0.25} stroke="none" />
-      <path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2Z" />
+      <path d="M14 2 5 13.5h6.5L10 22 19.5 10h-6.5L14 2Z" fill="currentColor" stroke="none" />
+      <path d="M14 2 5 13.5h6.5L10 22" fill="currentColor" opacity={0.25} stroke="none" />
+      <path d="M14 2 5 13.5h6.5L10 22 19.5 10h-6.5L14 2Z" />
+    </Base>
+  );
+}
+
+export function ArrowLeftIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M20 12H5" strokeWidth={2} />
+      <path d="m10.5 6-6 6 6 6" strokeWidth={2} />
+      <circle cx="20" cy="12" r="1.4" fill="currentColor" opacity={0.25} stroke="none" />
     </Base>
   );
 }
