@@ -41,8 +41,8 @@ export default function DashboardPage() {
     if (isAccount) {
       setLoading(true);
       setLoadError(null);
-      fetchRemoteInvoices()
-        .then((rows) => setInvoices(rows))
+      fetchRemoteInvoices({ limit: 200, offset: 0 })
+        .then(({ invoices: rows }) => setInvoices(rows))
         .catch(() => setLoadError("Could not load dashboard"))
         .finally(() => setLoading(false));
       return;

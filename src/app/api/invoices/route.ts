@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { db } from "@/db";
@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { InvoiceSchema, type InvoiceData } from "@/lib/invoice";
 import { fromRow, normalizeStatus, toRow } from "@/lib/invoice-row";
 import type { InvoiceStatus } from "@/lib/library";
+import { parsePaging } from "@/lib/paging";
 
 async function requireUserId(req: NextRequest): Promise<string | null> {
   try {
@@ -22,12 +23,24 @@ export async function GET(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  const rows = await db
-    .select()
-    .from(invoices)
-    .where(eq(invoices.userId, userId))
-    .orderBy(desc(invoices.updatedAt));
-  return NextResponse.json({ invoices: rows.map(fromRow) });
+  const { limit, offset, status } = parsePaging(req.nextUrl.searchParams);
+  const where = status
+    ? and(eq(invoices.userId, userId), eq(invoices.status, status))
+    : eq(invoices.userId, userId);
+  const [rows, totalRows] = await Promise.all([
+    db
+      .select()
+      .from(invoices)
+      .where(where)
+      .orderBy(desc(invoices.updatedAt))
+      .limit(limit)
+      .offset(offset),
+    db.select({ n: count() }).from(invoices).where(where),
+  ]);
+  return NextResponse.json({
+    invoices: rows.map(fromRow),
+    total: totalRows[0]?.n ?? 0,
+  });
 }
 
 export async function POST(req: NextRequest) {

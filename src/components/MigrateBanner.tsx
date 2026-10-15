@@ -5,6 +5,7 @@ import { useSession } from "@/lib/auth-client";
 import {
   countGuestInvoices,
   migrateGuestInvoices,
+  newestGuestSavedAt,
   readGuestInvoices,
   readMigratedFlag,
   setMigratedFlag,
@@ -26,7 +27,9 @@ export function MigrateBanner({ onSynced }: { onSynced?: () => void }) {
       }
       const n = countGuestInvoices();
       setCount(n);
-      setVisible(shouldShowMigrate(n, readMigratedFlag()));
+      setVisible(
+        shouldShowMigrate(n, readMigratedFlag(), newestGuestSavedAt()),
+      );
     });
     return () => cancelAnimationFrame(id);
   }, [session]);
@@ -43,10 +46,13 @@ export function MigrateBanner({ onSynced }: { onSynced?: () => void }) {
     setBusy(true);
     try {
       const entries = readGuestInvoices();
-      const n = await migrateGuestInvoices(entries);
+      const { migrated, skipped } = await migrateGuestInvoices(entries);
       setMigratedFlag();
       setVisible(false);
-      setToast(`Synced ${n} invoice${n === 1 ? "" : "s"} to account`);
+      setToast(
+        `Synced ${migrated} invoice${migrated === 1 ? "" : "s"} to account` +
+          (skipped > 0 ? ` (${skipped} already synced)` : ""),
+      );
       onSynced?.();
     } catch {
       setToast("Sync failed — try again");

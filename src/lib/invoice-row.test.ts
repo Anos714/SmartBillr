@@ -23,6 +23,7 @@ function sampleRow(over: Partial<InvoiceRow> = {}): InvoiceRow {
     templateId: (insert.templateId as string | null) ?? null,
     logoUrl: (insert.logoUrl as string | null) ?? null,
     signatureUrl: (insert.signatureUrl as string | null) ?? null,
+    paidAt: null,
     createdAt: new Date("2026-01-02T03:04:05.000Z"),
     updatedAt: new Date("2026-01-03T03:04:05.000Z"),
     ...over,
@@ -159,5 +160,24 @@ describe("invoice-row mapper", () => {
     expect(normalizeStatus("bogus")).toBe("draft");
     expect(fromRow(sampleRow({ status: null })).status).toBe("draft");
     expect(fromRow(sampleRow({ status: "weird" })).status).toBe("draft");
+  });
+
+  it("sets paidAt on toRow when paid, clears otherwise", () => {
+    const paid = toRow("user-1", DEFAULT_INVOICE, "paid");
+    expect(paid.paidAt).toBeInstanceOf(Date);
+    expect(toRow("user-1", DEFAULT_INVOICE, "draft").paidAt).toBeNull();
+    expect(toRow("user-1", DEFAULT_INVOICE, "pending").paidAt).toBeNull();
+  });
+
+  it("fromRow prefers the paidAt column, falls back to updatedAt when paid", () => {
+    const withPaidAt = sampleRow({
+      status: "paid",
+      paidAt: new Date("2026-02-01T00:00:00.000Z"),
+      updatedAt: new Date("2026-03-01T00:00:00.000Z"),
+    });
+    expect(fromRow(withPaidAt).paidAt).toBe("2026-02-01T00:00:00.000Z");
+    const legacyPaid = sampleRow({ status: "paid", paidAt: null });
+    expect(fromRow(legacyPaid).paidAt).toBe("2026-01-03T03:04:05.000Z");
+    expect(fromRow(sampleRow({ status: "draft" })).paidAt).toBeUndefined();
   });
 });

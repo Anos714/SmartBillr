@@ -13,9 +13,9 @@ export type SavedInvoice = {
   /**
    * When the invoice was marked paid (ISO timestamp). Set when status
    * transitions to "paid", cleared when it leaves "paid".
-   * Remote (DB) rows have no paidAt column — see `fromRow` in
-   * `invoice-row.ts`, which derives it from `updatedAt` when paid.
-   * Absent on older local entries: fall back to `savedAt`.
+   * Remote (DB) rows carry a real `paid_at` column — see `fromRow` in
+   * `invoice-row.ts`, which falls back to `updatedAt` for pre-migration
+   * rows. Absent on older local entries: fall back to `savedAt`.
    */
   paidAt?: string;
 };
@@ -122,7 +122,30 @@ export function saveInvoice(
   };
   list.push(entry);
   writeRaw(list);
+  clearStaleMigratedFlag(now);
   return entry;
+}
+
+/**
+ * A dismissed/synced migration flag goes stale as soon as a NEW guest
+ * invoice is saved after it: the banner must reappear for the new invoice.
+ * The flag is stored as an ISO timestamp string (legacy "1"/"dismissed"
+ * values are treated as stale too — any post-dismiss save clears them).
+ */
+export function clearStaleMigratedFlag(nowIso?: string): void {
+  if (!isBrowser()) return;
+  const KEY = "smartbillr_migrated";
+  try {
+    const flag = localStorage.getItem(KEY);
+    if (!flag) return;
+    const now = nowIso ?? new Date().toISOString();
+    const flagTime = Date.parse(flag);
+    if (!Number.isFinite(flagTime) || now > new Date(flagTime).toISOString()) {
+      localStorage.removeItem(KEY);
+    }
+  } catch {
+    // non-fatal
+  }
 }
 
 export function updateStatus(id: string, status: InvoiceStatus): boolean {

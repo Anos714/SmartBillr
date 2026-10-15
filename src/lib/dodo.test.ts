@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { Webhook } from "standardwebhooks";
 
 import {
+  classifyDodoEvent,
   createProCheckout,
   getMonthlyProductId,
   getProProductId,
@@ -128,5 +129,20 @@ describe("dodo lib", () => {
       priceType: "recurring",
       billing: "monthly",
     });
+  });
+
+  it("classifyDodoEvent maps refunds/disputes/chargebacks defensively", () => {
+    expect(classifyDodoEvent("payment.succeeded")).toBe("payment_succeeded");
+    expect(classifyDodoEvent("payment.failed")).toBe("payment_failed");
+    expect(classifyDodoEvent("subscription.cancelled")).toBe(
+      "subscription_cancelled",
+    );
+    expect(classifyDodoEvent("refund.succeeded")).toBe("refund_dispute");
+    expect(classifyDodoEvent("refund.created")).toBe("refund_dispute");
+    expect(classifyDodoEvent("payment.refunded")).toBe("refund_dispute");
+    expect(classifyDodoEvent("dispute.opened")).toBe("refund_dispute");
+    expect(classifyDodoEvent("chargeback.created")).toBe("refund_dispute");
+    expect(classifyDodoEvent("payment.chargeback")).toBe("refund_dispute");
+    expect(classifyDodoEvent("something.else")).toBe("ignored");
   });
 });

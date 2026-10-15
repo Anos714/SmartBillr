@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { invoices } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { InvoiceSchema, type InvoiceData } from "@/lib/invoice";
-import { fromRow, toRow } from "@/lib/invoice-row";
+import { fromRow, normalizeStatus, toRow } from "@/lib/invoice-row";
 import type { InvoiceStatus } from "@/lib/library";
 
 async function requireUserId(req: NextRequest): Promise<string | null> {
@@ -69,13 +69,23 @@ export async function PATCH(
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
+  const nextStatus: InvoiceStatus = isStatus(body?.status)
+    ? body.status
+    : normalizeStatus(row.status);
+  const now = new Date();
+  const paidAt =
+    nextStatus === "paid"
+      ? ((row.paidAt as Date | null) ?? now)
+      : null;
+
   const patch =
     invoiceData !== undefined
       ? {
-          ...toRow(userId, invoiceData, isStatus(body?.status) ? body.status : (row.status as InvoiceStatus)),
-          updatedAt: new Date(),
+          ...toRow(userId, invoiceData, nextStatus),
+          updatedAt: now,
+          paidAt,
         }
-      : { status: body?.status as string, updatedAt: new Date() };
+      : { status: nextStatus, updatedAt: now, paidAt };
 
   const updated = await db
     .update(invoices)

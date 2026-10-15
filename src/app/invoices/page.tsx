@@ -114,6 +114,7 @@ export default function InvoicesPage() {
   const { data: session } = useSession();
   const isAccount = Boolean(session?.user);
   const [invoices, setInvoices] = useState<SavedInvoice[]>([]);
+  const [serverTotal, setServerTotal] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -126,12 +127,20 @@ export default function InvoicesPage() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [openMenu, setOpenMenu] = useState<string | null>(null);
 
-  const refresh = () => {
+  const refresh = (statusOverride?: StatusFilter) => {
     if (isAccount) {
+      const active = statusOverride ?? status;
       setLoading(true);
       setLoadError(null);
-      fetchRemoteInvoices()
-        .then((rows) => setInvoices(rows))
+      fetchRemoteInvoices({
+        limit: 200,
+        offset: 0,
+        ...(active !== "all" ? { status: active } : {}),
+      })
+        .then(({ invoices: rows, total }) => {
+          setInvoices(rows);
+          setServerTotal(total);
+        })
         .catch(() => {
           setLoadError("Could not load invoices");
           setToast("Could not load invoices");
@@ -160,6 +169,7 @@ export default function InvoicesPage() {
   const handleStatus = (v: StatusFilter) => {
     setStatus(v);
     setPage(1);
+    if (isAccount) refresh(v);
   };
 
   const handleQuery = (v: string) => {
@@ -469,7 +479,7 @@ function RowActions({
           </p>
           <button
             type="button"
-            onClick={refresh}
+            onClick={() => refresh()}
             className="mt-6 rounded-xl bg-[#0C6B4F] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0a5a42]"
           >
             Retry
@@ -603,6 +613,9 @@ function RowActions({
           <div className="mt-4 flex items-center justify-between text-sm">
             <p className="text-stone-500">
               Page {safePage} of {pageCount}
+              {isAccount && serverTotal !== null
+                ? ` · ${serverTotal} total`
+                : null}
             </p>
             <div className="flex gap-2">
               <button

@@ -49,6 +49,7 @@ export function toRow(
     total: String(totals.grandTotal),
     currency: invoice.currency,
     status,
+    paidAt: status === "paid" ? new Date() : null,
     templateId: invoice.templateId,
     logoUrl: invoice.logoUrl || null,
     signatureUrl: invoice.signatureUrl || null,
@@ -131,14 +132,20 @@ export function fromRow(row: InvoiceRow): SavedInvoice {
       : typeof row.createdAt === "string"
         ? row.createdAt
         : new Date().toISOString();
-  // No paidAt column in the DB (by design — no migration). Derive it:
-  // when status is paid, Paid At = updatedAt (set on every PATCH);
-  // otherwise undefined. Clients fall back to savedAt when missing.
+  // paidAt: prefer the real column; fall back to updatedAt when paid
+  // (rows written before the paid_at migration); otherwise undefined.
+  // Clients fall back to savedAt when missing.
   const updatedAt =
     row.updatedAt instanceof Date
       ? row.updatedAt.toISOString()
       : typeof row.updatedAt === "string"
         ? row.updatedAt
+        : undefined;
+  const paidAt =
+    row.paidAt instanceof Date
+      ? row.paidAt.toISOString()
+      : typeof row.paidAt === "string"
+        ? row.paidAt
         : undefined;
 
   // Row-level query/display columns stay authoritative over the stored
@@ -194,6 +201,8 @@ export function fromRow(row: InvoiceRow): SavedInvoice {
     invoice,
     status,
     total,
-    ...(status === "paid" && updatedAt ? { paidAt: updatedAt } : {}),
+    ...(status === "paid" && (paidAt ?? updatedAt)
+      ? { paidAt: (paidAt ?? updatedAt) as string }
+      : {}),
   };
 }

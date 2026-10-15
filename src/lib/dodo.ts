@@ -118,6 +118,33 @@ export type DodoWebhookEvent = {
   [key: string]: unknown;
 };
 
+export type DodoEventClass =
+  | "payment_succeeded"
+  | "payment_failed"
+  | "subscription_cancelled"
+  | "refund_dispute"
+  | "ignored";
+
+/**
+ * Classify a Dodo webhook type. Refund/dispute/chargeback variants are
+ * matched defensively by substring (Dodo event names vary), so any money
+ * flowing back to the buyer deactivates Pro.
+ */
+export function classifyDodoEvent(type: string): DodoEventClass {
+  const t = (type || "").toLowerCase();
+  if (t === "payment.succeeded") return "payment_succeeded";
+  if (t === "subscription.cancelled") return "subscription_cancelled";
+  if (t === "payment.failed") return "payment_failed";
+  if (
+    t.includes("refund") ||
+    t.includes("dispute") ||
+    t.includes("chargeback")
+  ) {
+    return "refund_dispute";
+  }
+  return "ignored";
+}
+
 function readHeader(
   headers: Record<string, string> | Headers,
   name: string,

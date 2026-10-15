@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { subscriptions, user } from "@/db/schema";
-import { verifyWebhook, type DodoWebhookEvent } from "@/lib/dodo";
+import { verifyWebhook, classifyDodoEvent, type DodoWebhookEvent } from "@/lib/dodo";
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object"
@@ -97,7 +97,8 @@ export async function POST(req: Request) {
   console.log("dodo webhook:", event.type);
 
   try {
-    if (event.type === "payment.succeeded") {
+    const kind = classifyDodoEvent(event.type);
+    if (kind === "payment_succeeded") {
       const info = extractPaymentInfo(event);
       const userId = await resolveUserId(info.userId, info.email);
       if (!userId) {
@@ -136,31 +137,33 @@ export async function POST(req: Request) {
           },
         });
     } else if (
-      event.type === "payment.failed" ||
-      event.type === "subscription.cancelled"
+      kind === "payment_failed" ||
+      kind === "subscription_cancelled" ||
+      kind === "refund_dispute"
     ) {
+      if (kind === "refund_dispute") {
+        console.error(
+          `dodo webhook: ${event.type} (event_id=${eventIdOf(event) ?? "unknown"}) — deactivating subscription`,
+        );
+      }
       const info = extractPaymentInfo(event);
       const userId = await resolveUserId(info.userId, info.email);
       if (userId) {
+        const status =
+          kind === "subscription_cancelled" ? "cancelled" : "inactive";
         await db
           .insert(subscriptions)
           .values({
             userId,
             dodoCustomerId: info.customerId,
-            status:
-              event.type === "subscription.cancelled"
-                ? "cancelled"
-                : "inactive",
+            status,
             plan: "lifetime",
           })
           .onConflictDoUpdate({
             target: subscriptions.userId,
             set: {
               dodoCustomerId: info.customerId,
-              status:
-                event.type === "subscription.cancelled"
-                  ? "cancelled"
-                  : "inactive",
+              status,
             },
           });
       }

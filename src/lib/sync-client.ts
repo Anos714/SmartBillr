@@ -12,8 +12,20 @@ function isBrowser(): boolean {
 export function shouldShowMigrate(
   localCount: number,
   flag: string | null,
+  newestSavedAt?: string | null,
 ): boolean {
-  return localCount > 0 && !flag;
+  if (localCount <= 0) return false;
+  if (!flag) return true;
+  // Stale flag: a guest invoice saved after the dismiss/sync timestamp
+  // re-arms the banner (see clearStaleMigratedFlag in library.ts — this
+  // is the belt-and-suspenders check for flags that were never cleared).
+  if (newestSavedAt) {
+    const flagTime = Date.parse(flag);
+    if (Number.isFinite(flagTime) && newestSavedAt > new Date(flagTime).toISOString()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export function readMigratedFlag(): string | null {
@@ -28,10 +40,22 @@ export function readMigratedFlag(): string | null {
 export function setMigratedFlag(): void {
   if (!isBrowser()) return;
   try {
-    localStorage.setItem(MIGRATED_FLAG_KEY, "1");
+    // Store a timestamp so a later guest save can detect staleness.
+    localStorage.setItem(MIGRATED_FLAG_KEY, new Date().toISOString());
   } catch {
     // non-fatal
   }
+}
+
+export function newestGuestSavedAt(): string | null {
+  const entries = readGuestInvoices();
+  let newest: string | null = null;
+  for (const e of entries) {
+    if (typeof e.savedAt === "string" && e.savedAt && (!newest || e.savedAt > newest)) {
+      newest = e.savedAt;
+    }
+  }
+  return newest;
 }
 
 export function countGuestInvoices(): number {
@@ -66,11 +90,39 @@ async function parseJson(res: Response): Promise<unknown> {
   }
 }
 
-export async function fetchRemoteInvoices(): Promise<SavedInvoice[]> {
-  const res = await fetch("/api/invoices");
+export type FetchInvoicesOptions = {
+  limit?: number;
+  offset?: number;
+  status?: InvoiceStatus;
+};
+
+export type FetchInvoicesResult = {
+  invoices: SavedInvoice[];
+  total: number;
+};
+
+export async function fetchRemoteInvoices(
+  opts: FetchInvoicesOptions = {},
+): Promise<FetchInvoicesResult> {
+  const params = new URLSearchParams();
+  if (opts.limit !== undefined) params.set("limit", String(opts.limit));
+  if (opts.offset !== undefined) params.set("offset", String(opts.offset));
+  if (opts.status !== undefined) params.set("status", opts.status);
+  const qs = params.toString();
+  const res = await fetch(`/api/invoices${qs ? `?${qs}` : ""}`);
   if (!res.ok) throw new Error(`list_failed_${res.status}`);
-  const body = (await parseJson(res)) as { invoices?: SavedInvoice[] } | null;
-  return Array.isArray(body?.invoices) ? (body.invoices as SavedInvoice[]) : [];
+  const body = (await parseJson(res)) as {
+    invoices?: SavedInvoice[];
+    total?: unknown;
+  } | null;
+  const invoices = Array.isArray(body?.invoices)
+    ? (body.invoices as SavedInvoice[])
+    : [];
+  const total =
+    typeof body?.total === "number" && Number.isFinite(body.total)
+      ? body.total
+      : invoices.length;
+  return { invoices, total };
 }
 
 export async function saveRemoteInvoice(
@@ -94,6 +146,21 @@ export async function duplicateRemoteInvoice(
   return saveRemoteInvoice(entry.invoice, entry.status);
 }
 
+export async function patchRemoteInvoice(
+  id: string,
+  invoice: InvoiceData,
+  status?: InvoiceStatus,
+): Promise<void> {
+  const res = await fetch(`/api/invoices/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(
+      status !== undefined ? { invoice, status } : { invoice },
+    ),
+  });
+  if (!res.ok) throw new Error(`save_failed_${res.status}`);
+}
+
 export async function patchRemoteStatus(
   id: string,
   status: InvoiceStatus,
@@ -113,17 +180,28 @@ export async function deleteRemoteInvoice(id: string): Promise<void> {
 
 export async function migrateGuestInvoices(
   entries: SavedInvoice[],
-): Promise<number> {
+): Promise<{ migrated: number; skipped: number }> {
   const res = await fetch("/api/invoices/migrate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      invoices: entries.map((e) => ({ invoice: e.invoice, status: e.status })),
+      invoices: entries.map((e) => ({
+        invoice: e.invoice,
+        status: e.status,
+        clientId: e.id,
+      })),
     }),
   });
   if (!res.ok) throw new Error(`migrate_failed_${res.status}`);
-  const body = (await parseJson(res)) as { migrated?: unknown } | null;
-  return typeof body?.migrated === "number" ? body.migrated : entries.length;
+  const body = (await parseJson(res)) as {
+    migrated?: unknown;
+    skipped?: unknown;
+  } | null;
+  return {
+    migrated:
+      typeof body?.migrated === "number" ? body.migrated : entries.length,
+    skipped: typeof body?.skipped === "number" ? body.skipped : 0,
+  };
 }
 
 export type RemoteAsset = {
