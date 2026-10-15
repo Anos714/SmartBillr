@@ -1,6 +1,11 @@
 "use client";
 
-import { useState, type ButtonHTMLAttributes, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  type ButtonHTMLAttributes,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
@@ -14,6 +19,7 @@ import {
   type IconProps,
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
+import { signIn, signOut, useSession } from "@/lib/auth-client";
 
 /** Small bordered button style for topbar actions. */
 export const topbarActionCls =
@@ -89,6 +95,113 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   );
 }
 
+function AuthCard() {
+  const { data: session, isPending } = useSession();
+  const [googleConfigured, setGoogleConfigured] = useState<boolean | null>(
+    null,
+  );
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/config")
+      .then((r) => r.json())
+      .then((j: { googleConfigured?: boolean }) => {
+        if (!cancelled) setGoogleConfigured(Boolean(j.googleConfigured));
+      })
+      .catch(() => {
+        if (!cancelled) setGoogleConfigured(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleSignIn = async () => {
+    setBusy(true);
+    try {
+      await signIn.social({
+        provider: "google",
+        callbackURL: "/create/invoice",
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    setBusy(true);
+    try {
+      await signOut();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const user = session?.user;
+
+  if (isPending) {
+    return (
+      <div className="rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-4 shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
+        <p className="text-sm font-bold text-stone-900">Checking session…</p>
+      </div>
+    );
+  }
+
+  if (user) {
+    const initial = (user.name ?? user.email ?? "U").charAt(0).toUpperCase();
+    return (
+      <div className="rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-4 shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
+        <div className="flex items-center gap-2.5">
+          <span
+            aria-hidden
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0C6B4F] text-sm font-bold text-white"
+          >
+            {initial}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-stone-900">
+              {user.name ?? "Signed in"}
+            </p>
+            <p className="truncate text-xs text-stone-500">{user.email}</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => void handleSignOut()}
+          disabled={busy}
+          className="mt-3 block w-full rounded-xl border border-[#E7E2D8] px-4 py-2 text-center text-sm font-semibold text-stone-700 transition hover:border-[#0C6B4F]/50 hover:text-[#0C6B4F] disabled:opacity-50"
+        >
+          {busy ? "Signing out…" : "Sign out"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-4 shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
+      <p className="text-sm font-bold text-stone-900">Editing as guest</p>
+      <p className="mt-1 text-xs leading-5 text-stone-500">
+        Log in to sync invoices across devices.
+      </p>
+      {googleConfigured === false ? (
+        <p className="mt-3 rounded-xl bg-stone-100 px-4 py-2 text-center text-xs font-semibold text-stone-500">
+          Google setup pending — add keys in .env.local
+        </p>
+      ) : (
+        <button
+          type="button"
+          onClick={() => void handleSignIn()}
+          disabled={busy || googleConfigured === null}
+          className="mt-3 block w-full rounded-xl bg-[#141412] px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-[#0C6B4F] disabled:opacity-50"
+        >
+          {busy ? "Redirecting…" : "Sign in with Google"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 type AppShellProps = {
   title: string;
   /** Icon shown next to the serif title in the topbar. */
@@ -150,18 +263,7 @@ export function AppShell({
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#0C6B4F]" />
           Proudly Open Source
         </p>
-        <div className="rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-4 shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
-          <p className="text-sm font-bold text-stone-900">Editing as guest</p>
-          <p className="mt-1 text-xs leading-5 text-stone-500">
-            Log in to sync invoices across devices.
-          </p>
-          <Link
-            href="/api/auth/signin"
-            className="mt-3 block rounded-xl bg-[#141412] px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-[#0C6B4F]"
-          >
-            Login
-          </Link>
-        </div>
+        <AuthCard />
       </div>
     </div>
   );
