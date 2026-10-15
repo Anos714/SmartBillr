@@ -83,9 +83,17 @@ export function PricingCards({
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const { data: session } = useSession();
+  // Monthly checkout is env-gated: only offered when a recurring Dodo
+  // product id is configured; otherwise the toggle shows "Soon" and the
+  // CTA shows a "coming soon" note instead of selling lifetime as monthly.
+  const monthlyAvailable = Boolean(
+    process.env.NEXT_PUBLIC_DODO_MONTHLY_PRODUCT_ID,
+  );
+  const monthlySoon = billing === "monthly" && !monthlyAvailable;
 
   const handleGoPro = async () => {
     if (checkoutBusy) return;
+    if (monthlySoon) return;
     if (!session?.user) {
       await signIn.social({ provider: "google", callbackURL: "/pricing" });
       return;
@@ -93,7 +101,11 @@ export function PricingCards({
     setCheckoutBusy(true);
     setCheckoutError(null);
     try {
-      const res = await fetch("/api/dodo/checkout", { method: "POST" });
+      const res = await fetch("/api/dodo/checkout", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ billing }),
+      });
       if (res.status === 401) {
         await signIn.social({ provider: "google", callbackURL: "/pricing" });
         return;
@@ -135,6 +147,11 @@ export function PricingCards({
             )}
           >
             {b === "lifetime" ? "Lifetime" : "Monthly"}
+            {b === "monthly" && !monthlyAvailable ? (
+              <span className="ml-1.5 rounded-full bg-[#E7E2D8] px-2 py-0.5 text-[10px] font-bold normal-case text-[#6B675E]">
+                Soon
+              </span>
+            ) : null}
           </button>
         ))}
       </div>
@@ -204,11 +221,17 @@ export function PricingCards({
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => void handleGoPro()}
-            disabled={checkoutBusy}
+            disabled={checkoutBusy || monthlySoon}
+            title={monthlySoon ? "Monthly coming soon" : undefined}
             className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#D9F452] px-8 py-3 text-base font-bold text-[#101210] disabled:opacity-60"
           >
             {checkoutBusy ? "Redirecting…" : "Go Pro"} <ArrowRightIcon size={18} />
           </motion.button>
+          {monthlySoon ? (
+            <p className="mt-2 text-center text-sm font-semibold text-[#D9F452]">
+              Monthly coming soon — grab lifetime.
+            </p>
+          ) : null}
           {checkoutError ? (
             <p role="alert" className="mt-2 text-center text-sm font-semibold text-[#FFD9D9]">
               {checkoutError}

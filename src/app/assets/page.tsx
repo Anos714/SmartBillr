@@ -292,6 +292,7 @@ export default function AssetsPage() {
   };
 
   const removeLogo = (i: number) => {
+    if (!window.confirm("Delete this logo?")) return;
     if (isAccount) {
       const url = shownLogos[i];
       const row = remoteAssets.find((a) => a.type === "logo" && a.url === url);
@@ -319,6 +320,7 @@ export default function AssetsPage() {
   };
 
   const removeSignature = (i: number) => {
+    if (!window.confirm("Delete this signature?")) return;
     if (isAccount) {
       const url = shownSignatures[i];
       const row = remoteAssets.find(

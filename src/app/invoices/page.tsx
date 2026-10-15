@@ -33,6 +33,7 @@ import {
 } from "@/lib/sync-client";
 import { useSession } from "@/lib/auth-client";
 import { MigrateBanner } from "@/components/MigrateBanner";
+import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 8;
@@ -555,11 +556,7 @@ function RowActions({
                         {serialOf(e)}
                       </td>
                       <td className="px-4 py-3 font-semibold whitespace-nowrap">
-                        {e.invoice.currency}{" "}
-                        {e.total.toLocaleString("en-IN", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
+                        {formatMoney(e.total, e.invoice.currency)}
                       </td>
                       <td className="px-4 py-3">{e.invoice.items.length}</td>
                       <td className="px-4 py-3">

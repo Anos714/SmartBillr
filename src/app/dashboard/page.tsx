@@ -8,6 +8,7 @@ import { DashboardIcon, PlusIcon } from "@/components/icons";
 import { CustomSelect } from "@/components/ui/select";
 import { TrendsAreaChart } from "@/components/evilcharts/area-chart";
 import { listInvoices, type SavedInvoice } from "@/lib/library";
+import { formatMoney } from "@/lib/money";
 import {
   currencies,
   monthlySeries,
@@ -22,13 +23,6 @@ const serif = { fontFamily: "var(--font-display), Georgia, serif" } as const;
 
 /** Deterministic fallback so prerender never reads the current time. */
 const FALLBACK_NOW = new Date(0);
-
-function fmt(n: number): string {
-  return n.toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 type RangeOpt = "6" | "12";
 
@@ -190,7 +184,7 @@ export default function DashboardPage() {
                   className="mt-2 font-mono text-3xl text-[#0C6B4F]"
                   style={serif}
                 >
-                  {activeCurrency} {fmt(stats.collected)}
+                  {formatMoney(stats.collected, activeCurrency)}
                 </p>
                 <p className="mt-1 text-xs text-stone-500">
                   {stats.collectedCount} invoice
@@ -203,7 +197,7 @@ export default function DashboardPage() {
                   Outstanding
                 </p>
                 <p className="mt-2 font-mono text-3xl text-[#141412]" style={serif}>
-                  {activeCurrency} {fmt(stats.outstanding)}
+                  {formatMoney(stats.outstanding, activeCurrency)}
                 </p>
                 <p className="mt-1 text-xs text-stone-500">
                   {stats.outstandingCount} invoice
@@ -216,7 +210,7 @@ export default function DashboardPage() {
                   Overdue
                 </p>
                 <p className="mt-2 font-mono text-3xl text-red-700" style={serif}>
-                  {activeCurrency} {fmt(stats.overdue)}
+                  {formatMoney(stats.overdue, activeCurrency)}
                 </p>
                 <p className="mt-1 text-xs text-stone-500">
                   {stats.overdueCount} invoice
@@ -237,11 +231,11 @@ export default function DashboardPage() {
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
                   <span className="inline-flex items-center gap-1.5 font-semibold text-stone-700">
                     <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#0C6B4F]" />
-                    Billed · {activeCurrency} {fmt(seriesTotals.billed)}
+                    Billed · {formatMoney(seriesTotals.billed, activeCurrency)}
                   </span>
                   <span className="inline-flex items-center gap-1.5 font-semibold text-stone-700">
                     <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#141412]" />
-                    Collected · {activeCurrency} {fmt(seriesTotals.collected)}
+                    Collected · {formatMoney(seriesTotals.collected, activeCurrency)}
                   </span>
                 </div>
               </div>
@@ -287,10 +281,10 @@ export default function DashboardPage() {
                           {p.month}
                         </td>
                         <td className="px-4 py-2 text-right font-mono text-xs text-stone-700">
-                          {fmt(p.billed)}
+                          {formatMoney(p.billed, activeCurrency)}
                         </td>
                         <td className="px-4 py-2 text-right font-mono text-xs text-stone-700">
-                          {fmt(p.collected)}
+                          {formatMoney(p.collected, activeCurrency)}
                         </td>
                       </tr>
                     ))}
@@ -334,13 +328,13 @@ export default function DashboardPage() {
                           {c.invoices}
                         </td>
                         <td className="px-2 py-2.5 text-right font-mono text-xs font-semibold text-stone-800">
-                          {fmt(c.billed)}
+                          {formatMoney(c.billed, activeCurrency)}
                         </td>
                         <td className="px-2 py-2.5 text-right font-mono text-xs font-semibold text-[#0C6B4F]">
-                          {fmt(c.collected)}
+                          {formatMoney(c.collected, activeCurrency)}
                         </td>
                         <td className="px-2 py-2.5 text-right font-mono text-xs text-stone-600">
-                          {fmt(c.outstanding)}
+                          {formatMoney(c.outstanding, activeCurrency)}
                         </td>
                       </tr>
                     ))}

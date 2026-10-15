@@ -4,6 +4,8 @@ import {
   formatMoney,
   itemTitle,
   resolveAccent,
+  lineAmount,
+  adjustmentAmount,
 } from "./minimal-white";
 
 const BURGUNDY = "#7F1D1D";
@@ -170,7 +172,7 @@ export function ConsultingRetainerPreview({ data, totals, watermark }: TemplateP
                   {formatMoney(data.currency, it.rate)}
                 </td>
                 <td className="py-3 text-right font-semibold tabular-nums" style={TABULAR}>
-                  {formatMoney(data.currency, it.qty * it.rate)}
+                  {formatMoney(data.currency, lineAmount(totals, it.id))}
                 </td>
               </tr>
             ))}
@@ -258,9 +260,7 @@ export function ConsultingRetainerPreview({ data, totals, watermark }: TemplateP
                   {a.type === "percentage" ? ` (${a.value}%)` : ""}
                 </span>
                 <span style={{ fontFamily: SERIF }}>
-                  {a.type === "percentage"
-                    ? formatMoney(data.currency, (totals.subtotal * a.value) / 100)
-                    : formatMoney(data.currency, a.value)}
+                  {formatMoney(data.currency, adjustmentAmount(totals, a.id))}
                 </span>
               </div>
             ))}

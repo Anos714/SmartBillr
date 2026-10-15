@@ -45,16 +45,18 @@ describe("invoice-row mapper", () => {
     expect(typeof row.total).toBe("string");
   });
 
-  it("defaults status to draft and stores fromJson/template/currency", () => {
+  it("defaults status to draft and stores full invoice JSON + query columns", () => {
     const row = toRow("user-9", DEFAULT_INVOICE);
     expect(row.status).toBe("draft");
     expect(row.currency).toBe(DEFAULT_INVOICE.currency);
     expect(row.templateId).toBe(DEFAULT_INVOICE.templateId);
-    expect(row.fromJson).toEqual({
+    // fromJson now holds the COMPLETE invoice (no dropped fields)
+    expect(row.fromJson).toMatchObject({
       fromName: DEFAULT_INVOICE.fromName,
-      fromEmail: DEFAULT_INVOICE.fromEmail,
-      fromAddress: DEFAULT_INVOICE.fromAddress,
-      logoUrl: DEFAULT_INVOICE.logoUrl ?? "",
+      billToAddress: DEFAULT_INVOICE.billToAddress,
+      notes: DEFAULT_INVOICE.notes,
+      terms: DEFAULT_INVOICE.terms,
+      paymentTerms: DEFAULT_INVOICE.paymentTerms,
     });
     expect(row.items).toEqual(DEFAULT_INVOICE.items);
   });
@@ -76,6 +78,80 @@ describe("invoice-row mapper", () => {
     expect(saved.invoice.items).toHaveLength(DEFAULT_INVOICE.items.length);
     expect(saved.invoice.currency).toBe(DEFAULT_INVOICE.currency);
     expect(saved.invoice.templateId).toBe(DEFAULT_INVOICE.templateId);
+  });
+
+  it("roundtrips full invoice JSON: notes/meta/adjustments/hsn survive", () => {
+    const invoice = {
+      ...DEFAULT_INVOICE,
+      billToAddress: "9 Client Lane, Pune",
+      notes: "Handle with care",
+      terms: "Net 30, no returns",
+      paymentTerms: "Net 30",
+      gstin: "27ABCDE1234F1Z5",
+      items: [
+        {
+          id: "i-hsn",
+          name: "Widget",
+          description: "",
+          qty: 3,
+          rate: 19.99,
+          taxPct: 18,
+          hsn: "8471",
+        },
+      ],
+      adjustments: [
+        { id: "a1", label: "GST 18%", value: 18, type: "percentage" as const },
+      ],
+      companyMeta: [{ label: "PAN", value: "ABCDE1234F" }],
+      clientMeta: [{ label: "Dept", value: "Procurement" }],
+      paymentInfo: [{ label: "UPI", value: "pay@upi" }],
+    };
+    const row = sampleRow({
+      ...toRow("user-1", invoice, "draft"),
+      id: "row-full",
+    } as Partial<InvoiceRow>);
+    const saved = fromRow(row);
+    expect(saved.invoice.billToAddress).toBe("9 Client Lane, Pune");
+    expect(saved.invoice.notes).toBe("Handle with care");
+    expect(saved.invoice.terms).toBe("Net 30, no returns");
+    expect(saved.invoice.paymentTerms).toBe("Net 30");
+    expect(saved.invoice.gstin).toBe("27ABCDE1234F1Z5");
+    expect(saved.invoice.items[0].hsn).toBe("8471");
+    expect(saved.invoice.adjustments).toHaveLength(1);
+    expect(saved.invoice.companyMeta).toEqual([
+      { label: "PAN", value: "ABCDE1234F" },
+    ]);
+    expect(saved.invoice.clientMeta).toEqual([
+      { label: "Dept", value: "Procurement" },
+    ]);
+    expect(saved.invoice.paymentInfo).toEqual([{ label: "UPI", value: "pay@upi" }]);
+    // line total uses Decimal rounding, not float math
+    expect(
+      calcTotals({
+        items: saved.invoice.items,
+        discountFlat: saved.invoice.discountFlat,
+        adjustments: saved.invoice.adjustments,
+      }).lines[0].amount,
+    ).toBe(59.97);
+  });
+
+  it("still loads legacy rows (fragment fromJson shape)", () => {
+    const legacy = sampleRow({
+      fromJson: {
+        fromName: "Old Co",
+        fromEmail: "old@co.com",
+        fromAddress: "1 Old St",
+        logoUrl: "",
+      } as InvoiceRow["fromJson"],
+      clientName: "Legacy Client",
+      clientEmail: "legacy@client.com",
+    });
+    const saved = fromRow(legacy);
+    expect(saved.invoice.fromName).toBe("Old Co");
+    expect(saved.invoice.billToName).toBe("Legacy Client");
+    expect(saved.invoice.billToEmail).toBe("legacy@client.com");
+    expect(saved.invoice.items).toHaveLength(DEFAULT_INVOICE.items.length);
+    expect(saved.status).toBe("draft");
   });
 
   it("normalizes unknown/null status to draft", () => {

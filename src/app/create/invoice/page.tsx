@@ -18,6 +18,7 @@ import {
   Info,
 } from "lucide-react";
 import { calcTotals, InvoiceSchema, invoiceDisplayNo, migrateInvoice } from "@/lib/invoice";
+import { formatMoney } from "@/lib/money";
 import { getInvoice, saveInvoice } from "@/lib/library";
 import { saveRemoteInvoice } from "@/lib/sync-client";
 import { useGuestStore, type MetaTarget } from "@/lib/guest-store";
@@ -329,7 +330,7 @@ function EditorInner() {
     invoiceNo: invoice.invoiceNo,
   });
 
-  const fmt = (n: number) => `${invoice.currency} ${n.toFixed(2)}`;
+  const fmt = (n: number) => formatMoney(n, invoice.currency);
 
   const showToast = (msg: string) => {
     setToast(msg);

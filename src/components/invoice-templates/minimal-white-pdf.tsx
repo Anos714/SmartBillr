@@ -1,21 +1,13 @@
 import { Document, Page, StyleSheet, Text, View, Image } from "@react-pdf/renderer";
 import type { TemplateProps } from "./minimal-white";
 import { invoiceDisplayNo } from "@/lib/invoice";
+import { formatMoney as canonicalFormatMoney } from "@/lib/money";
+import { adjustmentAmount, lineAmount } from "./minimal-white";
 import "@/lib/pdf-font";
 import { INVOICE_PDF_FONT_FAMILY } from "@/lib/pdf-font";
 
-const money = (currency: string, value: number) => {
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  } catch {
-    return `${currency} ${value.toFixed(2)}`;
-  }
-};
+const money = (currency: string, value: number) =>
+  canonicalFormatMoney(value, currency);
 
 const itemName = (it: { name?: string; desc?: string }) =>
   (it.name && it.name.trim()) || (it.desc && it.desc.trim()) || "Untitled item";
@@ -123,7 +115,7 @@ export function MinimalWhitePdfDocument({ data, totals, watermark }: TemplatePro
             <Text style={styles.colQty}>{String(it.qty)}</Text>
             <Text style={styles.colRate}>{money(data.currency, it.rate)}</Text>
             <Text style={styles.colTax}>{`${it.taxPct}%`}</Text>
-            <Text style={styles.colAmt}>{money(data.currency, it.qty * it.rate)}</Text>
+            <Text style={styles.colAmt}>{money(data.currency, lineAmount(totals, it.id))}</Text>
           </View>
         ))}
 
@@ -145,9 +137,7 @@ export function MinimalWhitePdfDocument({ data, totals, watermark }: TemplatePro
                     {a.type === "percentage" ? ` (${a.value}%)` : ""}
                   </Text>
                   <Text>
-                    {a.type === "percentage"
-                      ? money(data.currency, (totals.subtotal * a.value) / 100)
-                      : money(data.currency, a.value)}
+                    {money(data.currency, adjustmentAmount(totals, a.id))}
                   </Text>
                 </View>
               ))}

@@ -5,7 +5,11 @@ export type CreateProCheckoutArgs = {
   email: string;
   name?: string | null;
   userId: string;
+  /** "lifetime" (one-time) by default; "monthly" needs DODO_MONTHLY_PRODUCT_ID. */
+  billing?: BillingPeriod;
 };
+
+export type BillingPeriod = "lifetime" | "monthly";
 
 /** Product id backing the ₹999 lifetime Pro checkout. */
 export function getProProductId(): string {
@@ -16,6 +20,48 @@ export function getProProductId(): string {
     );
   }
   return id;
+}
+
+/**
+ * Optional product id backing the ₹199/mo recurring Pro checkout.
+ * Returns null when monthly billing is not configured yet — callers must
+ * treat monthly as "coming soon" instead of falling back to lifetime.
+ */
+export function getMonthlyProductId(): string | null {
+  return process.env.NEXT_PUBLIC_DODO_MONTHLY_PRODUCT_ID ?? null;
+}
+
+/** Whether the monthly (recurring) checkout is configured. */
+export function isMonthlyAvailable(): boolean {
+  return Boolean(getMonthlyProductId());
+}
+
+export type ResolvedCheckoutProduct = {
+  productId: string;
+  /** Dodo price type: one-time for lifetime, recurring for monthly. */
+  priceType: "one-time" | "recurring";
+  billing: BillingPeriod;
+};
+
+/**
+ * Resolve which Dodo product backs a checkout. Monthly requires
+ * NEXT_PUBLIC_DODO_MONTHLY_PRODUCT_ID — throws monthly_unavailable
+ * otherwise so the UI can show "coming soon" instead of selling
+ * lifetime as monthly.
+ */
+export function resolveCheckoutProduct(
+  billing: BillingPeriod = "lifetime",
+): ResolvedCheckoutProduct {
+  if (billing === "monthly") {
+    const monthlyId = getMonthlyProductId();
+    if (!monthlyId) {
+      throw new Error(
+        "monthly_unavailable: NEXT_PUBLIC_DODO_MONTHLY_PRODUCT_ID is not configured",
+      );
+    }
+    return { productId: monthlyId, priceType: "recurring", billing };
+  }
+  return { productId: getProProductId(), priceType: "one-time", billing };
 }
 
 function getReturnUrl(): string {
@@ -38,7 +84,8 @@ function getClient(): DodoPayments {
 }
 
 /**
- * Create a Dodo test-mode checkout session for the lifetime Pro product.
+ * Create a Dodo test-mode checkout session for the lifetime Pro product
+ * (or the monthly recurring product when billing === "monthly").
  * Returns the hosted checkout_url the buyer must be redirected to.
  * Metadata carries our userId so the webhook can map payment -> user.
  */
@@ -48,14 +95,15 @@ export async function createProCheckout(
   if (!args.email) throw new Error("email is required");
   if (!args.userId) throw new Error("userId is required");
   const client = getClient();
-  const productId = getProProductId();
+  const resolved = resolveCheckoutProduct(args.billing ?? "lifetime");
+  const productId = resolved.productId;
   const returnUrl = getReturnUrl();
 
   const res = await client.checkoutSessions.create({
     product_cart: [{ product_id: productId, quantity: 1 }],
     return_url: returnUrl,
     customer: { email: args.email, name: args.name ?? undefined },
-    metadata: { userId: args.userId },
+    metadata: { userId: args.userId, billing: resolved.billing },
   });
 
   if (!res.checkout_url) {

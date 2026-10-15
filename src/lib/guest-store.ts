@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import {
-  DEFAULT_INVOICE,
+  defaultInvoice,
   migrateInvoice,
   newAdjustmentId,
   newItemId,
@@ -59,9 +59,10 @@ function isBrowser(): boolean {
 }
 
 function loadInitial(): { invoice: InvoiceData; updatedAt: string | null } {
-  // Always return defaults so SSR and first client render match.
+  // Always return fresh defaults so SSR and first client render match and
+  // dates are computed at call time (not module import time).
   // Persisted state is loaded via rehydrate() inside a mount effect.
-  return { invoice: DEFAULT_INVOICE, updatedAt: null };
+  return { invoice: defaultInvoice(), updatedAt: null };
 }
 
 function readPersisted(): { invoice: InvoiceData; updatedAt: string | null } | null {
@@ -259,7 +260,7 @@ export const useGuestStore = create<GuestState>()((set) => ({
 
   reset: () =>
     set(() => ({
-      invoice: DEFAULT_INVOICE,
+      invoice: defaultInvoice(),
       updatedAt: new Date().toISOString(),
     })),
 

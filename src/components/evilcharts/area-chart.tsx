@@ -19,15 +19,9 @@ import {
 } from "recharts";
 
 import type { MonthPoint } from "@/lib/stats";
+import { formatMoney } from "@/lib/money";
 
 export type { MonthPoint };
-
-function fmtMoney(n: number): string {
-  return n.toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 type TooltipEntry = {
   name?: string;
@@ -56,8 +50,8 @@ function TrendsTooltip({
           className="mt-0.5 text-sm font-semibold"
           style={{ color: p.color ?? "#141412" }}
         >
-          {p.name}: {currency}{" "}
-          {fmtMoney(typeof p.value === "number" ? p.value : Number(p.value) || 0)}
+          {p.name}:{" "}
+          {formatMoney(typeof p.value === "number" ? p.value : Number(p.value) || 0, currency)}
         </p>
       ))}
     </div>

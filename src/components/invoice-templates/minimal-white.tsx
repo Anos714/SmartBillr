@@ -1,5 +1,6 @@
 import type { InvoiceData, InvoiceTotals } from "@/lib/invoice";
 import { invoiceDisplayNo } from "@/lib/invoice";
+import { formatMoney as canonicalFormatMoney } from "@/lib/money";
 
 export type TemplateProps = {
   data: InvoiceData;
@@ -7,14 +8,25 @@ export type TemplateProps = {
   watermark?: boolean;
 };
 
+/**
+ * Template-local formatter (legacy arg order). Delegates to the canonical
+ * "@/lib/money" formatter so previews and PDFs share one code path:
+ * en-IN grouping for INR (₹), en-US otherwise.
+ */
 export function formatMoney(currency: string, value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
+  return canonicalFormatMoney(value, currency);
 }
+
+/** Pre-computed per-line amount (qty*rate, Decimal-rounded). Use in render — no inline math. */
+export function lineAmount(totals: InvoiceTotals, id: string): number {
+  return totals.lines.find((l) => l.id === id)?.amount ?? 0;
+}
+
+/** Pre-computed per-adjustment amount (percentage resolved on subtotal). Use in render. */
+export function adjustmentAmount(totals: InvoiceTotals, id: string): number {
+  return totals.adjustmentsDetailed.find((d) => d.id === id)?.amount ?? 0;
+}
+
 
 export function resolveAccent(data: InvoiceData, fallback: string): string {
   return data.theme?.baseColor || data.accent || fallback;
@@ -208,7 +220,7 @@ export function MinimalWhitePreview({ data, totals, watermark }: TemplateProps) 
               <td className="py-3 text-right tabular-nums" style={TABULAR}>{formatMoney(data.currency, it.rate)}</td>
               <td className="py-3 text-right tabular-nums" style={TABULAR}>{it.taxPct}%</td>
               <td className="py-3 text-right font-medium tabular-nums" style={TABULAR}>
-                {formatMoney(data.currency, it.qty * it.rate)}
+                {formatMoney(data.currency, lineAmount(totals, it.id))}
               </td>
             </tr>
           ))}
@@ -233,9 +245,7 @@ export function MinimalWhitePreview({ data, totals, watermark }: TemplateProps) 
                 {a.type === "percentage" ? ` (${a.value}%)` : ""}
               </span>
               <span>
-                {a.type === "percentage"
-                  ? formatMoney(data.currency, (totals.subtotal * a.value) / 100)
-                  : formatMoney(data.currency, a.value)}
+                {formatMoney(data.currency, adjustmentAmount(totals, a.id))}
               </span>
             </div>
           ))}

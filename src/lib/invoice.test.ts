@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_ADJUSTMENTS,
   DEFAULT_INVOICE,
+  defaultInvoice,
   InvoiceSchema,
   calcTotals,
   invoiceDisplayNo,
@@ -114,6 +115,55 @@ describe("calcTotals", () => {
     // subtotal 200, discount 20, tax 36, adjustments 10 + 10 = 20 → 236
     expect(totals.adjustmentsTotal).toBe(20);
     expect(totals.grandTotal).toBe(236);
+  });
+
+  it("returns per-line amounts rounded with Decimal (3 x 19.99)", () => {
+    const totals = calcTotals({
+      items: [{ ...item({ id: "l1", qty: 3, rate: 19.99, taxPct: 0 }) }],
+      discountFlat: 0,
+    });
+    // 3 * 19.99 = 59.97 (float would give 59.969999…)
+    expect(totals.lines).toEqual([{ id: "l1", amount: 59.97 }]);
+    expect(totals.subtotal).toBe(59.97);
+  });
+
+  it("returns per-adjustment detail resolved against subtotal", () => {
+    const totals = calcTotals({
+      items: [{ ...item({ id: "l1", qty: 2, rate: 100, taxPct: 0 }) }],
+      discountFlat: 0,
+      adjustments: [
+        { id: "a1", label: "GST 18%", value: 18, type: "percentage" },
+        { id: "a2", label: "Shipping", value: 25, type: "fixed" },
+      ],
+    });
+    expect(totals.adjustmentsDetailed).toEqual([
+      { id: "a1", label: "GST 18%", amount: 36 },
+      { id: "a2", label: "Shipping", amount: 25 },
+    ]);
+    // detail sums to the total (no hidden rounding drift)
+    expect(
+      totals.adjustmentsDetailed.reduce((a, d) => a + d.amount, 0),
+    ).toBe(totals.adjustmentsTotal);
+  });
+});
+
+describe("defaultInvoice factory", () => {
+  it("returns fresh objects per call (no shared-mutable state)", () => {
+    const a = defaultInvoice();
+    const b = defaultInvoice();
+    expect(a).toEqual(b);
+    expect(a).not.toBe(b);
+    expect(a.items).not.toBe(b.items);
+    expect(a.theme).not.toBe(b.theme);
+    a.items.push({
+      id: "x",
+      name: "X",
+      description: "",
+      qty: 1,
+      rate: 1,
+      taxPct: 0,
+    });
+    expect(b.items).toHaveLength(2);
   });
 });
 
