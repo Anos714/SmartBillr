@@ -40,20 +40,26 @@ export function themeFontFamily(font: string | undefined): string {
   return "Geist, system-ui, -apple-system, sans-serif";
 }
 
+const DISPLAY_SERIF = "Georgia, 'Times New Roman', serif";
+const TABULAR: React.CSSProperties = { fontVariantNumeric: "tabular-nums" };
+
 export function MinimalWhitePreview({ data, totals, watermark }: TemplateProps) {
   const accent = resolveAccent(data, "#0C6B4F");
   const dark = data.theme?.mode === "dark";
   const fontFamily = themeFontFamily(data.theme?.font);
   const no = displayNo(data);
+  const bg = dark ? "#1a1a18" : "#ffffff";
+  const ink = dark ? "#f5f4f0" : "#18181b";
+  const meta = dark ? "#a8a29e" : "#71717a";
+  const faint = dark ? "#a8a29e" : "#a1a1aa";
+  const hairline = dark ? "#292524" : "#f4f4f5";
+  const whisper = dark ? "#292524" : "#f4f4f5";
   return (
     <div
       className="mx-auto w-full max-w-[800px] p-8 text-sm shadow-sm sm:p-12"
-      style={{
-        backgroundColor: dark ? "#1a1a18" : "#ffffff",
-        color: dark ? "#f5f4f0" : "#18181b",
-        fontFamily,
-      }}
+      style={{ backgroundColor: bg, color: ink, fontFamily }}
     >
+      {/* Masthead — gallery restraint */}
       <div className="flex items-start justify-between gap-6">
         <div>
           {data.logoUrl ? (
@@ -61,23 +67,28 @@ export function MinimalWhitePreview({ data, totals, watermark }: TemplateProps) 
             <img
               src={data.logoUrl}
               alt="Business logo"
-              className="mb-3 h-12 w-auto max-w-[180px] object-contain"
+              className="mb-5 h-12 w-auto max-w-[180px] object-contain"
             />
           ) : null}
           <p
-            className="text-xs font-semibold uppercase tracking-widest"
-            style={{ color: dark ? "#a8a29e" : "#a1a1aa" }}
+            className="text-[11px] font-semibold uppercase"
+            style={{ color: faint, letterSpacing: "0.18em" }}
           >
             Invoice
           </p>
-          <h1 className="mt-1 text-3xl font-bold" style={{ color: accent }}>
+          <h1
+            className="mt-2 text-[40px] leading-none font-normal tracking-tight"
+            style={{ fontFamily: DISPLAY_SERIF, color: ink }}
+          >
             {no}
           </h1>
           <div
-            className="mt-4 space-y-1"
-            style={{ color: dark ? "#d6d3d1" : "#52525b" }}
-          >
-            <p className="font-semibold" style={{ color: dark ? "#fafaf9" : "#18181b" }}>
+            className="mt-2 h-[2px] w-16"
+            style={{ backgroundColor: accent }}
+            aria-hidden
+          />
+          <div className="mt-6 space-y-1" style={{ color: meta }}>
+            <p className="font-semibold" style={{ color: ink }}>
               {data.fromName}
             </p>
             <p>{data.fromEmail}</p>
@@ -90,14 +101,14 @@ export function MinimalWhitePreview({ data, totals, watermark }: TemplateProps) 
             ))}
           </div>
         </div>
-        <div style={{ color: dark ? "#d6d3d1" : "#52525b" }} className="text-right">
+        <div style={{ color: meta }} className="pt-1 text-right">
           <p
-            className="text-xs font-semibold uppercase tracking-widest"
-            style={{ color: dark ? "#a8a29e" : "#a1a1aa" }}
+            className="text-[11px] font-semibold uppercase"
+            style={{ color: faint, letterSpacing: "0.18em" }}
           >
             Bill to
           </p>
-          <p className="mt-1 font-semibold" style={{ color: dark ? "#fafaf9" : "#18181b" }}>
+          <p className="mt-2 text-[15px] font-semibold" style={{ color: ink }}>
             {data.billToName}
           </p>
           <p>{data.billToEmail}</p>
@@ -107,7 +118,7 @@ export function MinimalWhitePreview({ data, totals, watermark }: TemplateProps) 
               {m.label ? `${m.label}: ` : ""}{m.value}
             </p>
           ))}
-          <div className="mt-4 space-y-0.5">
+          <div className="mt-6 space-y-0.5 tabular-nums" style={TABULAR}>
             <p>Issued: {data.issueDate}</p>
             <p>Due: {data.dueDate}</p>
             {data.paymentTerms ? <p>Terms: {data.paymentTerms}</p> : null}
@@ -115,17 +126,62 @@ export function MinimalWhitePreview({ data, totals, watermark }: TemplateProps) 
         </div>
       </div>
 
+      {/* Items — whisper-light separators, double rule under header */}
       <table className="mt-8 w-full border-collapse text-left">
         <thead>
           <tr
-            className="border-b-2 text-xs uppercase tracking-wide"
-            style={{ borderColor: accent, color: dark ? "#a8a29e" : "#71717a" }}
+            className="text-[11px] uppercase"
+            style={{ borderBottom: `2px solid ${accent}`, color: meta }}
           >
-            <th className="py-2 pr-2 font-semibold">Description</th>
-            <th className="w-16 py-2 text-right font-semibold">Qty</th>
-            <th className="w-24 py-2 text-right font-semibold">Rate</th>
-            <th className="w-16 py-2 text-right font-semibold">Tax%</th>
-            <th className="w-24 py-2 text-right font-semibold">Amount</th>
+            <th
+              className="py-3 pr-2 font-semibold"
+              style={{
+                letterSpacing: "0.18em",
+                boxShadow: `0 3px 0 ${bg}, 0 4px 0 ${hairline}`,
+              }}
+            >
+              Description
+            </th>
+            <th
+              className="w-16 py-3 text-right font-semibold tabular-nums"
+              style={{
+                letterSpacing: "0.18em",
+                boxShadow: `0 3px 0 ${bg}, 0 4px 0 ${hairline}`,
+                ...TABULAR,
+              }}
+            >
+              Qty
+            </th>
+            <th
+              className="w-24 py-3 text-right font-semibold tabular-nums"
+              style={{
+                letterSpacing: "0.18em",
+                boxShadow: `0 3px 0 ${bg}, 0 4px 0 ${hairline}`,
+                ...TABULAR,
+              }}
+            >
+              Rate
+            </th>
+            <th
+              className="w-16 py-3 text-right font-semibold tabular-nums"
+              style={{
+                letterSpacing: "0.18em",
+                boxShadow: `0 3px 0 ${bg}, 0 4px 0 ${hairline}`,
+                ...TABULAR,
+              }}
+            >
+              Tax%
+            </th>
+            <th
+              className="w-24 py-3 text-right font-semibold tabular-nums"
+              style={{
+                letterSpacing: "0.18em",
+                boxShadow: `0 3px 0 ${bg}, 0 4px 0 ${hairline}`,
+                ...TABULAR,
+              }}
+            >
+              Amount
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -133,25 +189,25 @@ export function MinimalWhitePreview({ data, totals, watermark }: TemplateProps) 
             <tr
               key={it.id}
               className="border-b"
-              style={{ borderColor: dark ? "#292524" : "#f4f4f5" }}
+              style={{ borderColor: whisper }}
             >
-              <td className="py-2 pr-2">
-                <p className="font-medium">{itemTitle(it)}</p>
+              <td className="py-3 pr-2">
+                <p className="text-sm font-semibold">{itemTitle(it)}</p>
                 {it.description ? (
-                  <p className="text-xs" style={{ color: dark ? "#a8a29e" : "#71717a" }}>
+                  <p className="mt-0.5 text-xs" style={{ color: meta }}>
                     {it.description}
                   </p>
                 ) : null}
                 {it.hsn ? (
-                  <p className="text-[11px]" style={{ color: dark ? "#a8a29e" : "#71717a" }}>
+                  <p className="mt-0.5 text-[11px]" style={{ color: meta }}>
                     HSN: {it.hsn}
                   </p>
                 ) : null}
               </td>
-              <td className="py-2 text-right">{it.qty}</td>
-              <td className="py-2 text-right">{formatMoney(data.currency, it.rate)}</td>
-              <td className="py-2 text-right">{it.taxPct}%</td>
-              <td className="py-2 text-right font-medium">
+              <td className="py-3 text-right tabular-nums" style={TABULAR}>{it.qty}</td>
+              <td className="py-3 text-right tabular-nums" style={TABULAR}>{formatMoney(data.currency, it.rate)}</td>
+              <td className="py-3 text-right tabular-nums" style={TABULAR}>{it.taxPct}%</td>
+              <td className="py-3 text-right font-medium tabular-nums" style={TABULAR}>
                 {formatMoney(data.currency, it.qty * it.rate)}
               </td>
             </tr>
@@ -159,8 +215,9 @@ export function MinimalWhitePreview({ data, totals, watermark }: TemplateProps) 
         </tbody>
       </table>
 
-      <div className="mt-6 flex">
-        <div className="ml-auto w-64 space-y-1.5 text-[10pt]" style={{ color: dark ? "#d6d3d1" : "#52525b" }}>
+      {/* Totals — right aligned, hairline divider */}
+      <div className="mt-8 flex">
+        <div className="ml-auto w-64 space-y-1.5 text-[10pt] tabular-nums" style={{ color: meta, ...TABULAR }}>
           <div className="flex justify-between">
             <span>Subtotal</span>
             <span>{formatMoney(data.currency, totals.subtotal)}</span>
@@ -192,20 +249,30 @@ export function MinimalWhitePreview({ data, totals, watermark }: TemplateProps) 
               <span>{formatMoney(data.currency, totals.adjustmentsTotal)}</span>
             </div>
           ) : null}
-          <div className="border-t border-stone-200 pt-2" aria-hidden />
+          <div className="border-t pt-3" style={{ borderColor: hairline }} aria-hidden />
           <div
-            className="flex justify-between text-lg font-bold"
-            style={{ color: dark ? "#fafaf9" : "#18181b" }}
+            className="flex items-baseline justify-between"
+            style={{ color: ink }}
           >
-            <span>Total</span>
-            <span>{formatMoney(data.currency, totals.grandTotal)}</span>
+            <span
+              className="text-[11px] font-semibold uppercase"
+              style={{ letterSpacing: "0.18em", color: faint }}
+            >
+              Total
+            </span>
+            <span
+              className="text-[28px] font-normal tracking-tight"
+              style={{ fontFamily: DISPLAY_SERIF }}
+            >
+              {formatMoney(data.currency, totals.grandTotal)}
+            </span>
           </div>
         </div>
       </div>
 
       {(data.paymentInfo ?? []).length > 0 ? (
-        <div className="mt-4 text-xs" style={{ color: dark ? "#d6d3d1" : "#52525b" }}>
-          <p className="text-[9pt] font-bold uppercase tracking-wide" style={{ color: dark ? "#a8a29e" : "#a1a1aa" }}>
+        <div className="mt-8 text-xs" style={{ color: meta }}>
+          <p className="text-[11px] font-semibold uppercase" style={{ color: faint, letterSpacing: "0.18em" }}>
             Payment info
           </p>
           {(data.paymentInfo ?? []).map((m, i) => (
@@ -217,12 +284,12 @@ export function MinimalWhitePreview({ data, totals, watermark }: TemplateProps) 
       ) : null}
 
       {(data.notes || data.terms) && (
-        <div className="mt-4 flex gap-6 text-xs" style={{ color: dark ? "#a8a29e" : "#71717a" }}>
+        <div className="mt-8 flex gap-6 text-xs" style={{ color: meta }}>
           <div className="w-1/2">
             {data.notes ? (
               <>
-                <p className="text-[9pt] font-bold uppercase tracking-wide">Notes</p>
-                <p className="mt-1 text-[10pt] whitespace-pre-line" style={{ color: dark ? "#d6d3d1" : "#52525b" }}>
+                <p className="text-[11px] font-semibold uppercase" style={{ color: faint, letterSpacing: "0.18em" }}>Notes</p>
+                <p className="mt-1 text-xs whitespace-pre-line" style={{ color: meta }}>
                   {data.notes}
                 </p>
               </>
@@ -231,8 +298,8 @@ export function MinimalWhitePreview({ data, totals, watermark }: TemplateProps) 
           <div className="w-1/2">
             {data.terms ? (
               <>
-                <p className="text-[9pt] font-bold uppercase tracking-wide">Terms</p>
-                <p className="mt-1 text-[10pt] whitespace-pre-line" style={{ color: dark ? "#d6d3d1" : "#52525b" }}>
+                <p className="text-[11px] font-semibold uppercase" style={{ color: faint, letterSpacing: "0.18em" }}>Terms</p>
+                <p className="mt-1 text-xs whitespace-pre-line" style={{ color: meta }}>
                   {data.terms}
                 </p>
               </>
@@ -241,15 +308,15 @@ export function MinimalWhitePreview({ data, totals, watermark }: TemplateProps) 
         </div>
       )}
 
-      <div className="mt-5 flex justify-end">
+      <div className="mt-8 flex justify-end">
         <div className="text-right">
           {data.signatureUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={data.signatureUrl} alt="Signature" className="ml-auto h-12 w-auto object-contain" />
           ) : (
-            <div className="ml-auto h-12 w-40 border-b border-stone-300" aria-hidden />
+            <div className="ml-auto h-12 w-40 border-b" style={{ borderColor: hairline }} aria-hidden />
           )}
-          <p className="mt-1 text-[8pt]" style={{ color: dark ? "#a8a29e" : "#71717a" }}>
+          <p className="mt-1 text-[8pt]" style={{ color: meta }}>
             Authorized signature
           </p>
         </div>

@@ -20,69 +20,64 @@ const money = (currency: string, value: number) => {
 const itemName = (it: { name?: string; desc?: string }) =>
   (it.name && it.name.trim()) || (it.desc && it.desc.trim()) || "Untitled item";
 
+const GHOST = "rgba(255,255,255,0.05)";
+const HAIRLINE = "rgba(255,255,255,0.1)";
+
 const styles = StyleSheet.create({
   page: {
     fontSize: 10,
     color: "#fafafa",
-    backgroundColor: "#111111",
-    fontFamily: INVOICE_PDF_FONT_FAMILY,
-  },
-  pageDarker: {
-    fontSize: 10,
-    color: "#fafafa",
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "#0d0d0f",
     fontFamily: INVOICE_PDF_FONT_FAMILY,
   },
   body: { padding: 36, paddingBottom: 72 },
-  label: { fontSize: 8, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 3 },
-  invoiceNo: { fontSize: 30, fontWeight: "bold", color: "#ffffff", marginTop: 4 },
+  ghost: { fontSize: 72, fontWeight: "bold", color: GHOST, textAlign: "center", marginBottom: -10 },
+  label: { fontSize: 9, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 2 },
+  invoiceNo: { fontSize: 36, fontWeight: "bold", color: "#ffffff", marginTop: 6 },
   partyName: { fontSize: 11, fontWeight: "bold", color: "#ffffff", marginTop: 8 },
   partyLine: { color: "rgba(255,255,255,0.6)", marginTop: 2, fontSize: 9 },
   totalCard: { borderRadius: 12, padding: 18, minWidth: 210, textAlign: "right" },
-  totalCardLabel: { fontSize: 8, fontWeight: "bold", color: "rgba(0,0,0,0.6)", textTransform: "uppercase", letterSpacing: 1.5 },
-  totalCardValue: { fontSize: 26, fontWeight: "bold", color: "#000000", marginTop: 4 },
+  totalCardLabel: { fontSize: 9, fontWeight: "bold", color: "rgba(0,0,0,0.6)", textTransform: "uppercase", letterSpacing: 2 },
+  totalCardValue: { fontSize: 28, fontWeight: "bold", color: "#000000", marginTop: 4 },
   totalCardSub: { fontSize: 8, color: "rgba(0,0,0,0.7)", marginTop: 4 },
-  panel: { marginTop: 18, borderRadius: 12, padding: 16, flexDirection: "row", justifyContent: "space-between", borderWidth: 1 },
-  panelLabel: { fontSize: 8, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 1.5 },
+  panel: { marginTop: 26, borderRadius: 12, padding: 16, flexDirection: "row", justifyContent: "space-between", borderWidth: 1, borderColor: HAIRLINE, backgroundColor: "#161618" },
+  panelLabel: { fontSize: 9, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 2 },
   panelName: { fontSize: 11, fontWeight: "bold", color: "#ffffff", marginTop: 4 },
   panelLine: { fontSize: 9, color: "rgba(255,255,255,0.7)", marginTop: 2 },
-  tableHead: { flexDirection: "row", marginTop: 18, paddingBottom: 6, borderBottomWidth: 1 },
-  headText: { fontSize: 8, fontWeight: "bold", textTransform: "uppercase" },
-  tableRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#2a2a2a", paddingVertical: 7 },
+  tableHead: { flexDirection: "row", marginTop: 26, paddingBottom: 8, borderBottomWidth: 2 },
+  headText: { fontSize: 9, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 2 },
+  gapRule: { borderTopWidth: 1, borderTopColor: HAIRLINE, marginTop: 3 },
+  tableRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: HAIRLINE, paddingVertical: 8 },
   colDesc: { flex: 1 },
   colQty: { width: 50, textAlign: "right" },
   colRate: { width: 80, textAlign: "right" },
   colTax: { width: 50, textAlign: "right" },
   colAmt: { width: 80, textAlign: "right", fontWeight: "bold", color: "#ffffff" },
   bodyText: { color: "rgba(255,255,255,0.8)" },
-  itemDescSmall: { fontSize: 8, color: "rgba(255,255,255,0.55)", marginTop: 2 },
-  totalsWrap: { alignItems: "flex-end", marginTop: 16 },
+  itemName: { fontSize: 11, fontWeight: "bold", color: "#ffffff" },
+  itemDescSmall: { fontSize: 9, color: "rgba(255,255,255,0.55)", marginTop: 2 },
+  totalsWrap: { alignItems: "flex-end", marginTop: 26 },
   totalsBox: { width: 280 },
   totalRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4, color: "rgba(255,255,255,0.7)", fontSize: 10 },
-  glowDivider: { borderBottomWidth: 2, marginTop: 4, marginBottom: 6 },
-  grandLabel: { fontSize: 8, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 3 },
-  grandValue: { fontSize: 28, fontWeight: "bold" },
-  payBlock: { marginTop: 16 },
-  payLabel: { fontSize: 9, fontWeight: "bold", textTransform: "uppercase" },
+  payBlock: { marginTop: 28 },
+  payLabel: { fontSize: 9, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 2 },
   payLine: { fontSize: 8, color: "rgba(255,255,255,0.6)", marginTop: 2 },
-  notesRow: { flexDirection: "row", marginTop: 16, gap: 24 },
+  notesRow: { flexDirection: "row", marginTop: 28, gap: 24 },
   notesCol: { width: "50%" },
-  notesLabel: { fontSize: 9, fontWeight: "bold", textTransform: "uppercase" },
-  notesText: { fontSize: 10, color: "rgba(255,255,255,0.75)", marginTop: 4 },
-  sigRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 20 },
+  notesLabel: { fontSize: 9, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 2 },
+  notesText: { fontSize: 9, color: "rgba(255,255,255,0.75)", marginTop: 4 },
+  sigRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 28 },
   sigBox: { alignItems: "flex-end" },
   sigImage: { width: 120, height: 36, objectFit: "contain", backgroundColor: "#fafafa", borderRadius: 6 },
-  sigSpacer: { width: 160, height: 36, borderBottomWidth: 1, borderBottomColor: "#525252" },
+  sigSpacer: { width: 160, height: 36, borderBottomWidth: 1, borderBottomColor: HAIRLINE },
   sigCaption: { fontSize: 8, color: "rgba(255,255,255,0.5)", marginTop: 4 },
   watermark: { position: "absolute", bottom: 18, left: 0, right: 0, textAlign: "center", fontSize: 8, color: "rgba(255,255,255,0.35)" },
+  grandLabel: { fontSize: 9, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 2 },
+  grandValue: { fontSize: 30, fontWeight: "bold" },
 });
 
 export function BoldDarkPdfDocument({ data, totals, watermark }: TemplateProps) {
   const accent = data.theme?.baseColor || data.accent || "#A3E635";
-  const darker = data.theme?.mode === "dark";
-  // Honor theme.font (InvoiceSans is the only embedded PDF font; mapping adjusts spacing)
-  const _fontHint = data.theme?.font === "serif" ? 0.2 : data.theme?.font === "inter" ? 0.5 : 0.3;
-  void _fontHint;
   const no = invoiceDisplayNo({
     prefix: data.prefix ?? "",
     serialNumber: data.serialNumber ?? "",
@@ -90,8 +85,9 @@ export function BoldDarkPdfDocument({ data, totals, watermark }: TemplateProps) 
   });
   return (
     <Document>
-      <Page size="A4" style={darker ? styles.pageDarker : styles.page}>
+      <Page size="A4" style={styles.page}>
         <View style={styles.body}>
+          <Text style={styles.ghost}>{no}</Text>
           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
             <View>
               <Text style={[styles.label, { color: accent }]}>Invoice</Text>
@@ -114,7 +110,7 @@ export function BoldDarkPdfDocument({ data, totals, watermark }: TemplateProps) 
             </View>
           </View>
 
-          <View style={[styles.panel, { backgroundColor: darker ? "#171717" : "#1c1c1c", borderColor: "#2a2a2a" }]}>
+          <View style={styles.panel}>
             <View>
               <Text style={[styles.panelLabel, { color: accent }]}>Billed by</Text>
               <Text style={styles.panelName}>{data.fromName}</Text>
@@ -140,10 +136,11 @@ export function BoldDarkPdfDocument({ data, totals, watermark }: TemplateProps) 
             <Text style={[styles.colTax, styles.headText, { color: accent }]}>Tax%</Text>
             <Text style={[styles.colAmt, styles.headText, { color: accent }]}>Amount</Text>
           </View>
+          <View style={styles.gapRule} />
           {data.items.map((it) => (
             <View key={it.id} style={styles.tableRow}>
               <View style={styles.colDesc}>
-                <Text style={{ color: "#ffffff" }}>{itemName(it)}</Text>
+                <Text style={styles.itemName}>{itemName(it)}</Text>
                 {it.description ? <Text style={styles.itemDescSmall}>{it.description}</Text> : null}
                 {it.hsn ? <Text style={styles.itemDescSmall}>HSN: {it.hsn}</Text> : null}
               </View>
@@ -188,7 +185,8 @@ export function BoldDarkPdfDocument({ data, totals, watermark }: TemplateProps) 
                     <Text>{money(data.currency, totals.adjustmentsTotal)}</Text>
                   </View>
                 ) : null}
-                <View style={[styles.glowDivider, { borderBottomColor: accent }]} />
+                <View style={{ borderBottomWidth: 2, borderBottomColor: accent, marginTop: 4 }} />
+                <View style={[styles.gapRule, { marginBottom: 8 }]} />
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }}>
                   <Text style={[styles.grandLabel, { color: accent }]}>Total</Text>
                   <Text style={[styles.grandValue, { color: accent }]}>{money(data.currency, totals.grandTotal)}</Text>

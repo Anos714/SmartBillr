@@ -22,34 +22,39 @@ const itemName = (it: { name?: string; desc?: string }) =>
 
 const styles = StyleSheet.create({
   page: { padding: 48, paddingBottom: 72, fontSize: 10, color: "#18181b", backgroundColor: "#ffffff", fontFamily: INVOICE_PDF_FONT_FAMILY },
-  header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 24 },
-  label: { fontSize: 8, fontWeight: "bold", color: "#a1a1aa", textTransform: "uppercase", letterSpacing: 1 },
-  invoiceNo: { fontSize: 24, fontWeight: "bold", marginTop: 4 },
+  header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
+  label: { fontSize: 9, fontWeight: "bold", color: "#a1a1aa", textTransform: "uppercase", letterSpacing: 2 },
+  invoiceNo: { fontSize: 36, fontWeight: "bold", marginTop: 6, color: "#18181b" },
+  accentTick: { width: 64, height: 2, marginTop: 8 },
   partyName: { fontSize: 11, fontWeight: "bold", marginTop: 8 },
   partyLine: { color: "#52525b", marginTop: 2, maxWidth: 260 },
   right: { textAlign: "right" },
-  tableHead: { flexDirection: "row", borderBottomWidth: 2, borderBottomColor: "#0C6B4F", paddingBottom: 6, marginTop: 16 },
-  tableRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#f4f4f5", paddingVertical: 6 },
+  billToName: { fontSize: 12, fontWeight: "bold", marginTop: 6, color: "#18181b" },
+  tableHead: { flexDirection: "row", borderBottomWidth: 2, borderBottomColor: "#0C6B4F", paddingBottom: 8, marginTop: 28 },
+  gapRule: { borderTopWidth: 1, borderTopColor: "#f4f4f5", marginTop: 2 },
+  tableRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#f4f4f5", paddingVertical: 8 },
   colDesc: { flex: 1 },
   colQty: { width: 50, textAlign: "right" },
   colRate: { width: 80, textAlign: "right" },
   colTax: { width: 50, textAlign: "right" },
   colAmt: { width: 80, textAlign: "right", fontWeight: "bold" },
-  headText: { fontSize: 8, fontWeight: "bold", color: "#71717a", textTransform: "uppercase" },
-  itemDescSmall: { fontSize: 8, color: "#71717a", marginTop: 2 },
-  totalsWrap: { alignItems: "flex-end", marginTop: 16 },
+  headText: { fontSize: 9, fontWeight: "bold", color: "#71717a", textTransform: "uppercase", letterSpacing: 2 },
+  itemName: { fontSize: 11, fontWeight: "bold", color: "#18181b" },
+  itemDescSmall: { fontSize: 9, color: "#71717a", marginTop: 2 },
+  totalsWrap: { alignItems: "flex-end", marginTop: 28 },
   totalsBox: { width: 256 },
   totalRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4, color: "#52525b", fontSize: 10 },
-  divider: { borderTopWidth: 1, borderTopColor: "#e4e4e7", marginTop: 2, marginBottom: 6 },
-  grandRow: { flexDirection: "row", justifyContent: "space-between", fontSize: 14, fontWeight: "bold", color: "#18181b" },
-  payBlock: { marginTop: 16 },
-  payLabel: { fontSize: 9, fontWeight: "bold", color: "#a1a1aa", textTransform: "uppercase", letterSpacing: 1 },
+  divider: { borderTopWidth: 1, borderTopColor: "#e4e4e7", marginTop: 6, marginBottom: 8 },
+  grandLabel: { fontSize: 9, fontWeight: "bold", color: "#a1a1aa", textTransform: "uppercase", letterSpacing: 2 },
+  grandValue: { fontSize: 24, fontWeight: "bold", color: "#18181b" },
+  payBlock: { marginTop: 28 },
+  payLabel: { fontSize: 9, fontWeight: "bold", color: "#a1a1aa", textTransform: "uppercase", letterSpacing: 2 },
   payLine: { fontSize: 8, color: "#52525b", marginTop: 2 },
-  notesRow: { flexDirection: "row", marginTop: 16, gap: 24 },
+  notesRow: { flexDirection: "row", marginTop: 28, gap: 24 },
   notesCol: { width: "50%" },
-  notesLabel: { fontSize: 9, fontWeight: "bold", color: "#a1a1aa", textTransform: "uppercase", letterSpacing: 1 },
-  notesText: { fontSize: 10, color: "#52525b", marginTop: 4 },
-  sigRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 20 },
+  notesLabel: { fontSize: 9, fontWeight: "bold", color: "#a1a1aa", textTransform: "uppercase", letterSpacing: 2 },
+  notesText: { fontSize: 9, color: "#52525b", marginTop: 4 },
+  sigRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 28 },
   sigBox: { alignItems: "flex-end" },
   sigImage: { width: 120, height: 36, objectFit: "contain" },
   sigSpacer: { width: 160, height: 36, borderBottomWidth: 1, borderBottomColor: "#d6d3d1" },
@@ -70,7 +75,8 @@ export function MinimalWhitePdfDocument({ data, totals, watermark }: TemplatePro
         <View style={styles.header}>
           <View>
             <Text style={styles.label}>Invoice</Text>
-            <Text style={[styles.invoiceNo, { color: accent }]}>{no}</Text>
+            <Text style={styles.invoiceNo}>{no}</Text>
+            <View style={[styles.accentTick, { backgroundColor: accent }]} />
             <Text style={styles.partyName}>{data.fromName}</Text>
             <Text style={styles.partyLine}>{data.fromEmail}</Text>
             <Text style={styles.partyLine}>{data.fromAddress}</Text>
@@ -83,7 +89,7 @@ export function MinimalWhitePdfDocument({ data, totals, watermark }: TemplatePro
           </View>
           <View style={styles.right}>
             <Text style={styles.label}>Bill to</Text>
-            <Text style={styles.partyName}>{data.billToName}</Text>
+            <Text style={styles.billToName}>{data.billToName}</Text>
             <Text style={styles.partyLine}>{data.billToEmail}</Text>
             <Text style={styles.partyLine}>{data.billToAddress}</Text>
             {(data.clientMeta ?? []).map((m, i) => (
@@ -106,10 +112,11 @@ export function MinimalWhitePdfDocument({ data, totals, watermark }: TemplatePro
           <Text style={[styles.colTax, styles.headText]}>Tax%</Text>
           <Text style={[styles.colAmt, styles.headText]}>Amount</Text>
         </View>
+        <View style={styles.gapRule} />
         {data.items.map((it) => (
           <View key={it.id} style={styles.tableRow}>
             <View style={styles.colDesc}>
-              <Text>{itemName(it)}</Text>
+              <Text style={styles.itemName}>{itemName(it)}</Text>
               {it.description ? <Text style={styles.itemDescSmall}>{it.description}</Text> : null}
               {it.hsn ? <Text style={styles.itemDescSmall}>HSN: {it.hsn}</Text> : null}
             </View>
@@ -155,9 +162,9 @@ export function MinimalWhitePdfDocument({ data, totals, watermark }: TemplatePro
                 </View>
               ) : null}
               <View style={styles.divider} />
-              <View style={styles.grandRow}>
-                <Text>Total</Text>
-                <Text>{money(data.currency, totals.grandTotal)}</Text>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }}>
+                <Text style={styles.grandLabel}>Total</Text>
+                <Text style={styles.grandValue}>{money(data.currency, totals.grandTotal)}</Text>
               </View>
             </View>
           </View>
