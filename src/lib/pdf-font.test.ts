@@ -4,7 +4,12 @@ import { describe, expect, it } from "vitest";
 
 import { INVOICE_PDF_FONT_FAMILY } from "./pdf-font";
 
-const FONTS = ["DejaVuSans.ttf", "DejaVuSans-Bold.ttf"];
+const FONTS = [
+  "DejaVuSans.ttf",
+  "DejaVuSans-Bold.ttf",
+  "DejaVuSans-Oblique.ttf",
+  "DejaVuSans-BoldOblique.ttf",
+];
 
 describe("pdf-font shipping", () => {
   it("exports the InvoiceSans family name", () => {

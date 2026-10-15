@@ -15,7 +15,22 @@ const boldSrc =
     ? `${process.cwd()}/public/fonts/DejaVuSans-Bold.ttf`
     : "/fonts/DejaVuSans-Bold.ttf";
 
+const obliqueSrc =
+  typeof window === "undefined"
+    ? `${process.cwd()}/public/fonts/DejaVuSans-Oblique.ttf`
+    : "/fonts/DejaVuSans-Oblique.ttf";
+
+const boldObliqueSrc =
+  typeof window === "undefined"
+    ? `${process.cwd()}/public/fonts/DejaVuSans-BoldOblique.ttf`
+    : "/fonts/DejaVuSans-BoldOblique.ttf";
+
 Font.register({
   family: INVOICE_PDF_FONT_FAMILY,
-  fonts: [{ src: regularSrc }, { src: boldSrc, fontWeight: "bold" }],
+  fonts: [
+    { src: regularSrc },
+    { src: boldSrc, fontWeight: "bold" },
+    { src: obliqueSrc, fontStyle: "italic" },
+    { src: boldObliqueSrc, fontWeight: "bold", fontStyle: "italic" },
+  ],
 });
