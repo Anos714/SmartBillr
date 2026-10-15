@@ -7,8 +7,12 @@ import {
   themeFontFamily,
 } from "./minimal-white";
 
+const TERRA = "#C2410C";
+const DISPLAY_SERIF = "Georgia, 'Times New Roman', serif";
+const TABULAR: React.CSSProperties = { fontVariantNumeric: "tabular-nums" };
+
 export function PastelCreativePreview({ data, totals, watermark }: TemplateProps) {
-  const accent = resolveAccent(data, "#F97066");
+  const accent = resolveAccent(data, TERRA);
   const dark = data.theme?.mode === "dark";
   const fontFamily = themeFontFamily(data.theme?.font);
   const no = displayNo(data);
@@ -16,15 +20,17 @@ export function PastelCreativePreview({ data, totals, watermark }: TemplateProps
   const card = dark ? "#33261f" : "#ffffff";
   const ink = dark ? "#fdeedf" : "#3f2d23";
   const muted = dark ? "#c9a68f" : "#9a7a65";
+  const soft = dark ? "#d8bfa9" : "#7c5a44";
+  const hairline = dark ? "#4a352a" : "#f0d9c6";
   return (
     <div
-      className="mx-auto w-full max-w-[800px] p-6 text-sm sm:p-8"
+      className="mx-auto w-full max-w-[800px] p-8 text-sm shadow-sm sm:p-10"
       style={{ backgroundColor: bg, color: ink, fontFamily }}
     >
       {/* Header card: logo / invoice no / dates */}
       <div
-        className="rounded-2xl p-6 sm:p-8"
-        style={{ backgroundColor: card, boxShadow: "0 8px 30px rgba(249,112,102,0.12)" }}
+        className="rounded-2xl border p-6 sm:p-8"
+        style={{ backgroundColor: card, borderColor: hairline }}
       >
         <div className="flex items-start justify-between gap-6">
           <div>
@@ -33,27 +39,32 @@ export function PastelCreativePreview({ data, totals, watermark }: TemplateProps
               <img
                 src={data.logoUrl}
                 alt="Business logo"
-                className="mb-3 h-12 w-auto max-w-[180px] rounded-2xl object-contain"
+                className="mb-4 h-12 w-auto max-w-[180px] rounded-2xl object-contain"
                 style={{ backgroundColor: bg, padding: 6 }}
               />
             ) : (
               <div
-                className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-black text-white"
-                style={{ backgroundColor: accent }}
+                className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-black text-white"
+                style={{ backgroundColor: accent, fontFamily: DISPLAY_SERIF }}
                 aria-hidden
               >
                 {data.fromName.charAt(0).toUpperCase()}
               </div>
             )}
             <p
-              className="inline-block rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-white"
-              style={{ backgroundColor: accent }}
+              className="text-[11px] font-bold uppercase"
+              style={{ color: accent, letterSpacing: "0.18em" }}
             >
               Invoice
             </p>
-            <h1 className="mt-2 text-4xl font-black tracking-tight">{no}</h1>
-            <p className="mt-2 font-semibold">{data.fromName}</p>
-            <p className="text-xs" style={{ color: muted }}>
+            <h1
+              className="mt-2 text-[38px] leading-none font-normal tracking-tight"
+              style={{ fontFamily: DISPLAY_SERIF }}
+            >
+              {no}
+            </h1>
+            <p className="mt-3 text-[15px] font-semibold">{data.fromName}</p>
+            <p className="mt-0.5 text-xs" style={{ color: muted }}>
               {data.fromEmail}
             </p>
             <p className="max-w-[300px] whitespace-pre-line text-xs" style={{ color: muted }}>
@@ -71,8 +82,11 @@ export function PastelCreativePreview({ data, totals, watermark }: TemplateProps
               </p>
             ))}
           </div>
-          <div className="text-right text-xs" style={{ color: muted }}>
-            <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: accent }}>
+          <div className="text-right text-xs tabular-nums" style={{ color: muted, ...TABULAR }}>
+            <p
+              className="text-[11px] font-bold uppercase"
+              style={{ color: accent, letterSpacing: "0.18em" }}
+            >
               Studio schedule
             </p>
             <p className="mt-2 font-semibold" style={{ color: ink }}>
@@ -83,13 +97,19 @@ export function PastelCreativePreview({ data, totals, watermark }: TemplateProps
             </p>
             {data.paymentTerms ? <p>Terms: {data.paymentTerms}</p> : null}
             <div
-              className="mt-3 rounded-2xl px-4 py-3"
-              style={{ backgroundColor: bg }}
+              className="mt-4 rounded-2xl border px-4 py-3"
+              style={{ backgroundColor: bg, borderColor: hairline }}
             >
-              <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: accent }}>
+              <p
+                className="text-[11px] font-bold uppercase"
+                style={{ color: accent, letterSpacing: "0.18em" }}
+              >
                 Amount due
               </p>
-              <p className="text-2xl font-black" style={{ color: ink }}>
+              <p
+                className="mt-1 text-[26px] leading-none font-normal tracking-tight tabular-nums"
+                style={{ color: ink, fontFamily: DISPLAY_SERIF, ...TABULAR }}
+              >
                 {formatMoney(data.currency, totals.grandTotal)}
               </p>
             </div>
@@ -98,21 +118,30 @@ export function PastelCreativePreview({ data, totals, watermark }: TemplateProps
       </div>
 
       {/* Bill-by / bill-to + meta lines */}
-      <div className="mt-4 grid grid-cols-2 gap-4">
-        <div className="rounded-2xl p-5" style={{ backgroundColor: card }}>
-          <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: accent }}>
+      <div className="mt-8 grid grid-cols-2 gap-6">
+        <div className="rounded-2xl border p-5" style={{ backgroundColor: card, borderColor: hairline }}>
+          <p
+            className="text-[11px] font-bold uppercase"
+            style={{ color: accent, letterSpacing: "0.18em" }}
+          >
             Billed by
           </p>
-          <p className="mt-1 font-semibold">{data.fromName}</p>
+          <p className="mt-2 text-[15px] font-semibold">{data.fromName}</p>
           <p className="text-xs" style={{ color: muted }}>
             {data.fromEmail}
           </p>
         </div>
-        <div className="rounded-2xl p-5 text-right" style={{ backgroundColor: card }}>
-          <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: accent }}>
+        <div
+          className="rounded-2xl border p-5 text-right"
+          style={{ backgroundColor: card, borderColor: hairline }}
+        >
+          <p
+            className="text-[11px] font-bold uppercase"
+            style={{ color: accent, letterSpacing: "0.18em" }}
+          >
             Billed to
           </p>
-          <p className="mt-1 font-semibold">{data.billToName}</p>
+          <p className="mt-2 text-[15px] font-semibold">{data.billToName}</p>
           <p className="text-xs" style={{ color: muted }}>
             {data.billToEmail}
           </p>
@@ -128,61 +157,85 @@ export function PastelCreativePreview({ data, totals, watermark }: TemplateProps
         </div>
       </div>
 
-      {/* Friendly rounded items table */}
-      <div className="mt-4 overflow-hidden rounded-2xl" style={{ backgroundColor: card }}>
+      {/* Items card — letterspaced header, hairline rows, serif tabular numerals */}
+      <div
+        className="mt-8 overflow-hidden rounded-2xl border"
+        style={{ backgroundColor: card, borderColor: hairline }}
+      >
         <div
-          className="grid grid-cols-[1fr_56px_88px_56px_88px] gap-2 px-5 py-3 text-[11px] font-bold uppercase tracking-widest text-white"
-          style={{ backgroundColor: accent }}
+          className="grid grid-cols-[1fr_56px_88px_56px_88px] gap-2 px-5 py-3 text-[11px] font-bold uppercase text-white"
+          style={{
+            backgroundColor: accent,
+            letterSpacing: "0.18em",
+            backgroundImage:
+              "repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 7px)",
+          }}
         >
           <span>Description</span>
-          <span className="text-right">Qty</span>
-          <span className="text-right">Rate</span>
-          <span className="text-right">Tax%</span>
-          <span className="text-right">Amount</span>
+          <span className="text-right tabular-nums">Qty</span>
+          <span className="text-right tabular-nums">Rate</span>
+          <span className="text-right tabular-nums">Tax%</span>
+          <span className="text-right tabular-nums">Amount</span>
         </div>
-        {data.items.map((it, i) => (
+        <div className="h-[2px]" style={{ backgroundColor: accent }} aria-hidden />
+        <div className="h-px" style={{ backgroundColor: hairline }} aria-hidden />
+        {data.items.map((it) => (
           <div
             key={it.id}
-            className="grid grid-cols-[1fr_56px_88px_56px_88px] gap-2 px-5 py-3"
-            style={{
-              backgroundColor: i % 2 === 0 ? "transparent" : dark ? "#2b201a" : "#FFF8F1",
-              borderTop: `1px dashed ${dark ? "#4a352a" : "#f5d9c8"}`,
-            }}
+            className="grid grid-cols-[1fr_56px_88px_56px_88px] gap-2 border-b px-5 py-3"
+            style={{ borderColor: hairline }}
           >
             <div>
-              <p className="font-semibold">{itemTitle(it)}</p>
+              <p className="text-sm font-semibold" style={{ color: ink }}>
+                {itemTitle(it)}
+              </p>
               {it.description ? (
-                <p className="text-xs" style={{ color: muted }}>
+                <p className="mt-0.5 text-xs" style={{ color: muted }}>
                   {it.description}
                 </p>
               ) : null}
               {it.hsn ? (
-                <p className="rounded-full text-[11px]" style={{ color: muted }}>
+                <p className="mt-0.5 text-[11px]" style={{ color: muted }}>
                   HSN: {it.hsn}
                 </p>
               ) : null}
             </div>
-            <span className="text-right">{it.qty}</span>
-            <span className="text-right">{formatMoney(data.currency, it.rate)}</span>
-            <span className="text-right">{it.taxPct}%</span>
-            <span className="text-right font-bold">{formatMoney(data.currency, it.qty * it.rate)}</span>
+            <span className="text-right tabular-nums" style={{ fontFamily: DISPLAY_SERIF, ...TABULAR }}>
+              {it.qty}
+            </span>
+            <span className="text-right tabular-nums" style={{ fontFamily: DISPLAY_SERIF, color: soft, ...TABULAR }}>
+              {formatMoney(data.currency, it.rate)}
+            </span>
+            <span className="text-right tabular-nums" style={{ fontFamily: DISPLAY_SERIF, color: soft, ...TABULAR }}>
+              {it.taxPct}%
+            </span>
+            <span
+              className="text-right font-semibold tabular-nums"
+              style={{ fontFamily: DISPLAY_SERIF, color: ink, ...TABULAR }}
+            >
+              {formatMoney(data.currency, it.qty * it.rate)}
+            </span>
           </div>
         ))}
       </div>
 
-      {/* Totals block right */}
-      <div className="mt-4 flex">
+      {/* Totals block right — serif numerals, double rule */}
+      <div className="mt-8 flex">
         <div
-          className="ml-auto w-64 space-y-1.5 rounded-2xl p-5 text-[10pt]"
-          style={{ backgroundColor: card, color: muted }}
+          className="ml-auto w-64 space-y-1.5 rounded-2xl border p-5 text-[10pt] tabular-nums"
+          style={{ backgroundColor: card, borderColor: hairline, color: soft, ...TABULAR }}
         >
           <div className="flex justify-between">
             <span>Subtotal</span>
-            <span style={{ color: ink }}>{formatMoney(data.currency, totals.subtotal)}</span>
+            <span style={{ fontFamily: DISPLAY_SERIF }}>
+              {formatMoney(data.currency, totals.subtotal)}
+            </span>
           </div>
           <div className="flex justify-between">
             <span>Discount</span>
-            <span style={{ color: ink }}>-{formatMoney(data.currency, totals.discount)}</span>
+            <span style={{ fontFamily: DISPLAY_SERIF }}>
+              -{formatMoney(data.currency, totals.discount)}
+            </span>
           </div>
           {(data.adjustments ?? []).map((a) => (
             <div key={a.id} className="flex justify-between text-xs">
@@ -190,7 +243,7 @@ export function PastelCreativePreview({ data, totals, watermark }: TemplateProps
                 {a.label || "Adjustment"}
                 {a.type === "percentage" ? ` (${a.value}%)` : ""}
               </span>
-              <span style={{ color: ink }}>
+              <span style={{ fontFamily: DISPLAY_SERIF }}>
                 {a.type === "percentage"
                   ? formatMoney(data.currency, (totals.subtotal * a.value) / 100)
                   : formatMoney(data.currency, a.value)}
@@ -199,25 +252,48 @@ export function PastelCreativePreview({ data, totals, watermark }: TemplateProps
           ))}
           <div className="flex justify-between">
             <span>Tax</span>
-            <span style={{ color: ink }}>{formatMoney(data.currency, totals.taxTotal)}</span>
+            <span style={{ fontFamily: DISPLAY_SERIF }}>
+              {formatMoney(data.currency, totals.taxTotal)}
+            </span>
           </div>
           {(data.adjustments ?? []).length > 1 && totals.adjustmentsTotal !== 0 ? (
             <div className="flex justify-between">
               <span>Adjustments</span>
-              <span style={{ color: ink }}>{formatMoney(data.currency, totals.adjustmentsTotal)}</span>
+              <span style={{ fontFamily: DISPLAY_SERIF }}>
+                {formatMoney(data.currency, totals.adjustmentsTotal)}
+              </span>
             </div>
           ) : null}
-          <div className="border-t-2 border-dashed pt-2" style={{ borderColor: accent }} aria-hidden />
-          <div className="flex justify-between text-lg font-black" style={{ color: ink }}>
-            <span>Total</span>
-            <span>{formatMoney(data.currency, totals.grandTotal)}</span>
+          <div aria-hidden>
+            <div className="h-[2px]" style={{ backgroundColor: accent }} />
+            <div className="mt-[3px] border-t" style={{ borderColor: hairline }} />
+          </div>
+          <div className="flex items-baseline justify-between pt-1" style={{ color: ink }}>
+            <span
+              className="text-[11px] font-bold uppercase"
+              style={{ letterSpacing: "0.18em", color: muted }}
+            >
+              Total
+            </span>
+            <span
+              style={{ fontFamily: DISPLAY_SERIF }}
+              className="text-[26px] font-normal tracking-tight"
+            >
+              {formatMoney(data.currency, totals.grandTotal)}
+            </span>
           </div>
         </div>
       </div>
 
       {(data.paymentInfo ?? []).length > 0 ? (
-        <div className="mt-4 rounded-2xl p-5 text-xs" style={{ backgroundColor: card, color: muted }}>
-          <p className="text-[9pt] font-bold uppercase tracking-wide" style={{ color: accent }}>
+        <div
+          className="mt-8 rounded-2xl border p-5 text-xs"
+          style={{ backgroundColor: card, borderColor: hairline, color: soft }}
+        >
+          <p
+            className="text-[11px] font-bold uppercase"
+            style={{ color: accent, letterSpacing: "0.18em" }}
+          >
             Payment info
           </p>
           {(data.paymentInfo ?? []).map((m, i) => (
@@ -230,26 +306,32 @@ export function PastelCreativePreview({ data, totals, watermark }: TemplateProps
       ) : null}
 
       {data.notes || data.terms ? (
-        <div className="mt-4 grid grid-cols-2 gap-4 text-xs" style={{ color: muted }}>
-          <div className="rounded-2xl p-5" style={{ backgroundColor: card }}>
+        <div className="mt-8 grid grid-cols-2 gap-6 text-xs" style={{ color: muted }}>
+          <div className="rounded-2xl border p-5" style={{ backgroundColor: card, borderColor: hairline }}>
             {data.notes ? (
               <>
-                <p className="text-[9pt] font-bold uppercase tracking-wide" style={{ color: accent }}>
+                <p
+                  className="text-[11px] font-bold uppercase"
+                  style={{ color: accent, letterSpacing: "0.18em" }}
+                >
                   Notes
                 </p>
-                <p className="mt-1 text-[10pt] whitespace-pre-line" style={{ color: ink }}>
+                <p className="mt-1 text-xs whitespace-pre-line" style={{ color: soft }}>
                   {data.notes}
                 </p>
               </>
             ) : null}
           </div>
-          <div className="rounded-2xl p-5" style={{ backgroundColor: card }}>
+          <div className="rounded-2xl border p-5" style={{ backgroundColor: card, borderColor: hairline }}>
             {data.terms ? (
               <>
-                <p className="text-[9pt] font-bold uppercase tracking-wide" style={{ color: accent }}>
+                <p
+                  className="text-[11px] font-bold uppercase"
+                  style={{ color: accent, letterSpacing: "0.18em" }}
+                >
                   Terms
                 </p>
-                <p className="mt-1 text-[10pt] whitespace-pre-line" style={{ color: ink }}>
+                <p className="mt-1 text-xs whitespace-pre-line" style={{ color: soft }}>
                   {data.terms}
                 </p>
               </>
@@ -258,18 +340,21 @@ export function PastelCreativePreview({ data, totals, watermark }: TemplateProps
         </div>
       ) : null}
 
-      <div className="mt-5 flex justify-end">
+      <div className="mt-8 flex justify-end">
         <div className="text-right">
           {data.signatureUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={data.signatureUrl}
               alt="Signature"
-              className="ml-auto h-12 w-auto rounded-2xl object-contain"
-              style={{ backgroundColor: card, padding: 4 }}
+              className="ml-auto h-12 w-auto object-contain"
             />
           ) : (
-            <div className="ml-auto h-12 w-40 border-b-2 border-dashed" style={{ borderColor: accent }} aria-hidden />
+            <div
+              className="ml-auto h-12 w-40 border-b"
+              style={{ borderColor: hairline }}
+              aria-hidden
+            />
           )}
           <p className="mt-1 text-[8pt]" style={{ color: muted }}>
             Authorized signature
