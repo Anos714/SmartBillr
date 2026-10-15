@@ -17,6 +17,7 @@ import {
   Info,
 } from "lucide-react";
 import { calcTotals, InvoiceSchema, invoiceDisplayNo, migrateInvoice } from "@/lib/invoice";
+import { getInvoice, saveInvoice } from "@/lib/library";
 import { useGuestStore, type MetaTarget } from "@/lib/guest-store";
 import { TEMPLATE_CATALOG, type TemplateMeta } from "@/lib/templates";
 import { getTemplate, canUseTemplate } from "@/components/invoice-templates/registry";
@@ -29,13 +30,12 @@ import {
   InvoiceIcon,
   CheckIcon,
 } from "@/components/icons";
+import { ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const LIB_KEY = "smartbillr_invoices";
-
-const inputCls =
+export const inputCls =
   "w-full rounded-xl border border-[#E7E2D8] bg-[#FFFDF8] px-3 py-2 text-sm text-[#141412] shadow-[inset_0_1px_2px_rgba(20,20,18,0.04)] outline-none transition placeholder:text-stone-400 focus:border-[#0C6B4F] focus:ring-2 focus:ring-[#0C6B4F]/25";
-const labelCls =
+export const labelCls =
   "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[#3f3c37]";
 
 type ViewMode = "both" | "form" | "preview";
@@ -123,8 +123,10 @@ function EditorInner() {
   const [errorsOpen, setErrorsOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [pngBusy, setPngBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -137,6 +139,16 @@ function EditorInner() {
       if (toastTimer.current) clearTimeout(toastTimer.current);
     };
   }, []);
+
+  useEffect(() => {
+    const loadId = searchParams.get("load");
+    if (!loadId) return;
+    const snapshot = getInvoice(loadId);
+    if (snapshot) {
+      setInvoice({ ...migrateInvoice(snapshot.invoice) });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   useEffect(() => {
     const param = searchParams.get("template");
@@ -202,19 +214,35 @@ function EditorInner() {
 
   const handleSaveInvoice = () => {
     try {
-      const raw = localStorage.getItem(LIB_KEY);
-      const lib = raw ? (JSON.parse(raw) as unknown[]) : [];
-      const id =
-        typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : `inv-${Date.now()}`;
-      lib.push({ id, savedAt: new Date().toISOString(), invoice });
-      localStorage.setItem(LIB_KEY, JSON.stringify(lib));
+      saveInvoice(invoice);
       showToast("Saved");
     } catch {
       showToast("Save failed");
     }
     setDownloadOpen(false);
+  };
+
+  const handleDownloadPng = async () => {
+    const node = previewRef.current;
+    if (!node) {
+      showToast("Preview not ready");
+      return;
+    }
+    setPngBusy(true);
+    try {
+      const { toPng } = await import("html-to-image");
+      const dataUrl = await toPng(node, { cacheBust: true, pixelRatio: 2 });
+      const link = document.createElement("a");
+      link.download = `${invoice.prefix ?? ""}-${(invoice.serialNumber ?? "") || "invoice"}.png`;
+      link.href = dataUrl;
+      link.click();
+      showToast("PNG downloaded");
+    } catch {
+      showToast("PNG export failed");
+    } finally {
+      setPngBusy(false);
+      setDownloadOpen(false);
+    }
   };
 
   const handleViewPdf = async () => {
@@ -403,11 +431,11 @@ function EditorInner() {
             <button
               type="button"
               role="menuitem"
-              disabled
-              title="coming in next commit"
+              onClick={() => void handleDownloadPng()}
+              disabled={pngBusy}
               className={menuItemCls}
             >
-              Download PNG (soon)
+              <ImageIcon className="h-3.5 w-3.5" /> {pngBusy ? "Exporting…" : "Download PNG"}
             </button>
           </div>
         ) : null}
@@ -860,7 +888,11 @@ function EditorInner() {
             </span>
             <span className="font-mono text-[11px] text-stone-500">{displayNo || "INV-0001"}</span>
           </div>
-          <div className="paper-texture overflow-auto rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-4 shadow-[0_30px_60px_-30px_rgba(20,20,18,0.45)] sm:p-6">
+          <div
+            ref={previewRef}
+            id="invoice-preview"
+            className="paper-texture overflow-auto rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-4 shadow-[0_30px_60px_-30px_rgba(20,20,18,0.45)] sm:p-6"
+          >
             <Preview data={invoice} totals={totals} watermark={true} />
           </div>
           <dl className="mt-4 space-y-1.5 rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-4 text-sm shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
