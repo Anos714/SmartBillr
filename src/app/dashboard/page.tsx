@@ -6,8 +6,10 @@ import { RefreshCw } from "lucide-react";
 import { AppShell, TopbarAction } from "@/components/AppShell";
 import { DashboardIcon, PlusIcon } from "@/components/icons";
 import { CustomSelect } from "@/components/ui/select";
+import { EmptyState } from "@/components/ui/feedback";
 import { TrendsAreaChart } from "@/components/evilcharts/area-chart";
 import { listInvoices, type SavedInvoice } from "@/lib/library";
+import { formatMoney } from "@/lib/money";
 import {
   currencies,
   monthlySeries,
@@ -22,13 +24,6 @@ const serif = { fontFamily: "var(--font-display), Georgia, serif" } as const;
 
 /** Deterministic fallback so prerender never reads the current time. */
 const FALLBACK_NOW = new Date(0);
-
-function fmt(n: number): string {
-  return n.toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 type RangeOpt = "6" | "12";
 
@@ -47,8 +42,8 @@ export default function DashboardPage() {
     if (isAccount) {
       setLoading(true);
       setLoadError(null);
-      fetchRemoteInvoices()
-        .then((rows) => setInvoices(rows))
+      fetchRemoteInvoices({ limit: 200, offset: 0 })
+        .then(({ invoices: rows }) => setInvoices(rows))
         .catch(() => setLoadError("Could not load dashboard"))
         .finally(() => setLoading(false));
       return;
@@ -126,37 +121,34 @@ export default function DashboardPage() {
       {!mounted || (isAccount && loading && invoices.length === 0) ? (
         <p className="p-8 text-sm text-stone-500">Loading dashboard…</p>
       ) : loadError && invoices.length === 0 ? (
-        <section className="mx-auto flex max-w-md flex-col items-center rounded-3xl border border-[#E7E2D8] bg-[#FFFDF8] px-8 py-14 text-center shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
-          <h2 className="mt-5 text-2xl tracking-tight text-[#141412]" style={serif}>
-            Could not load dashboard
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-stone-500">
-            Something went wrong fetching your account data.
-          </p>
-          <button
-            type="button"
-            onClick={refresh}
-            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#0C6B4F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0a5a42]"
-          >
-            Retry
-          </button>
-        </section>
+        <EmptyState
+          title="Could not load dashboard"
+          copy="Something went wrong fetching your account data."
+          className="shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]"
+          action={
+            <button
+              type="button"
+              onClick={refresh}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#0C6B4F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0a5a42]"
+            >
+              Retry
+            </button>
+          }
+        />
       ) : invoices.length === 0 ? (
-        <section className="mx-auto flex max-w-md flex-col items-center rounded-3xl border border-[#E7E2D8] bg-[#FFFDF8] px-8 py-14 text-center shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
-          <h2 className="mt-5 text-2xl tracking-tight text-[#141412]" style={serif}>
-            No invoices yet
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-stone-500">
-            Create your first invoice and it will show up here with collection
-            stats and client activity.
-          </p>
-          <Link
-            href="/create/invoice"
-            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#0C6B4F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0a5a42]"
-          >
-            Create your first invoice -&gt;
-          </Link>
-        </section>
+        <EmptyState
+          title="No invoices yet"
+          copy="Create your first invoice and it will show up here with collection stats and client activity."
+          className="shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]"
+          action={
+            <Link
+              href="/create/invoice"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#0C6B4F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0a5a42]"
+            >
+              Create your first invoice -&gt;
+            </Link>
+          }
+        />
       ) : (
         <div className="space-y-5">
           {/* Overview — all time, per currency */}
@@ -190,7 +182,7 @@ export default function DashboardPage() {
                   className="mt-2 font-mono text-3xl text-[#0C6B4F]"
                   style={serif}
                 >
-                  {activeCurrency} {fmt(stats.collected)}
+                  {formatMoney(stats.collected, activeCurrency)}
                 </p>
                 <p className="mt-1 text-xs text-stone-500">
                   {stats.collectedCount} invoice
@@ -203,7 +195,7 @@ export default function DashboardPage() {
                   Outstanding
                 </p>
                 <p className="mt-2 font-mono text-3xl text-[#141412]" style={serif}>
-                  {activeCurrency} {fmt(stats.outstanding)}
+                  {formatMoney(stats.outstanding, activeCurrency)}
                 </p>
                 <p className="mt-1 text-xs text-stone-500">
                   {stats.outstandingCount} invoice
@@ -216,7 +208,7 @@ export default function DashboardPage() {
                   Overdue
                 </p>
                 <p className="mt-2 font-mono text-3xl text-red-700" style={serif}>
-                  {activeCurrency} {fmt(stats.overdue)}
+                  {formatMoney(stats.overdue, activeCurrency)}
                 </p>
                 <p className="mt-1 text-xs text-stone-500">
                   {stats.overdueCount} invoice
@@ -237,11 +229,11 @@ export default function DashboardPage() {
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
                   <span className="inline-flex items-center gap-1.5 font-semibold text-stone-700">
                     <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#0C6B4F]" />
-                    Billed · {activeCurrency} {fmt(seriesTotals.billed)}
+                    Billed · {formatMoney(seriesTotals.billed, activeCurrency)}
                   </span>
                   <span className="inline-flex items-center gap-1.5 font-semibold text-stone-700">
                     <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#141412]" />
-                    Collected · {activeCurrency} {fmt(seriesTotals.collected)}
+                    Collected · {formatMoney(seriesTotals.collected, activeCurrency)}
                   </span>
                 </div>
               </div>
@@ -287,10 +279,10 @@ export default function DashboardPage() {
                           {p.month}
                         </td>
                         <td className="px-4 py-2 text-right font-mono text-xs text-stone-700">
-                          {fmt(p.billed)}
+                          {formatMoney(p.billed, activeCurrency)}
                         </td>
                         <td className="px-4 py-2 text-right font-mono text-xs text-stone-700">
-                          {fmt(p.collected)}
+                          {formatMoney(p.collected, activeCurrency)}
                         </td>
                       </tr>
                     ))}
@@ -334,13 +326,13 @@ export default function DashboardPage() {
                           {c.invoices}
                         </td>
                         <td className="px-2 py-2.5 text-right font-mono text-xs font-semibold text-stone-800">
-                          {fmt(c.billed)}
+                          {formatMoney(c.billed, activeCurrency)}
                         </td>
                         <td className="px-2 py-2.5 text-right font-mono text-xs font-semibold text-[#0C6B4F]">
-                          {fmt(c.collected)}
+                          {formatMoney(c.collected, activeCurrency)}
                         </td>
                         <td className="px-2 py-2.5 text-right font-mono text-xs text-stone-600">
-                          {fmt(c.outstanding)}
+                          {formatMoney(c.outstanding, activeCurrency)}
                         </td>
                       </tr>
                     ))}

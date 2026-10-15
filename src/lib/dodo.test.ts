@@ -2,8 +2,12 @@ import { afterEach, describe, expect, it } from "vitest";
 import { Webhook } from "standardwebhooks";
 
 import {
+  classifyDodoEvent,
   createProCheckout,
+  getMonthlyProductId,
   getProProductId,
+  isMonthlyAvailable,
+  resolveCheckoutProduct,
   verifyWebhook,
 } from "./dodo";
 
@@ -11,6 +15,7 @@ const ENV_KEYS = [
   "DODO_PAYMENTS_API_KEY",
   "DODO_WEBHOOK_SECRET",
   "NEXT_PUBLIC_DODO_PRO_PRODUCT_ID",
+  "NEXT_PUBLIC_DODO_MONTHLY_PRODUCT_ID",
   "DODO_RETURN_URL",
 ] as const;
 
@@ -100,5 +105,44 @@ describe("dodo lib", () => {
         "webhook-signature": "y",
       }),
     ).toThrow(/DODO_WEBHOOK_SECRET/);
+  });
+
+  it("resolveCheckoutProduct gates monthly on env (no fake monthly checkout)", () => {
+    process.env.NEXT_PUBLIC_DODO_PRO_PRODUCT_ID = "pdt_lifetime_1";
+    delete process.env.NEXT_PUBLIC_DODO_MONTHLY_PRODUCT_ID;
+
+    expect(isMonthlyAvailable()).toBe(false);
+    expect(getMonthlyProductId()).toBeNull();
+    expect(resolveCheckoutProduct("lifetime")).toEqual({
+      productId: "pdt_lifetime_1",
+      priceType: "one-time",
+      billing: "lifetime",
+    });
+    expect(() => resolveCheckoutProduct("monthly")).toThrow(
+      /monthly_unavailable/,
+    );
+
+    process.env.NEXT_PUBLIC_DODO_MONTHLY_PRODUCT_ID = "pdt_monthly_1";
+    expect(isMonthlyAvailable()).toBe(true);
+    expect(resolveCheckoutProduct("monthly")).toEqual({
+      productId: "pdt_monthly_1",
+      priceType: "recurring",
+      billing: "monthly",
+    });
+  });
+
+  it("classifyDodoEvent maps refunds/disputes/chargebacks defensively", () => {
+    expect(classifyDodoEvent("payment.succeeded")).toBe("payment_succeeded");
+    expect(classifyDodoEvent("payment.failed")).toBe("payment_failed");
+    expect(classifyDodoEvent("subscription.cancelled")).toBe(
+      "subscription_cancelled",
+    );
+    expect(classifyDodoEvent("refund.succeeded")).toBe("refund_dispute");
+    expect(classifyDodoEvent("refund.created")).toBe("refund_dispute");
+    expect(classifyDodoEvent("payment.refunded")).toBe("refund_dispute");
+    expect(classifyDodoEvent("dispute.opened")).toBe("refund_dispute");
+    expect(classifyDodoEvent("chargeback.created")).toBe("refund_dispute");
+    expect(classifyDodoEvent("payment.chargeback")).toBe("refund_dispute");
+    expect(classifyDodoEvent("something.else")).toBe("ignored");
   });
 });

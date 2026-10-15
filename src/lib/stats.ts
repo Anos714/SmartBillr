@@ -1,4 +1,7 @@
 import type { SavedInvoice } from "./library";
+import { round2 } from "./invoice";
+
+export { round2 };
 
 /**
  * Dashboard statistics — pure functions over `SavedInvoice[]`.
@@ -51,11 +54,6 @@ const MONTH_LABELS = [
   "Nov",
   "Dec",
 ] as const;
-
-export function round2(n: number): number {
-  if (!Number.isFinite(n)) return 0;
-  return Math.round((n + Number.EPSILON) * 100) / 100;
-}
 
 export function currencyOf(e: SavedInvoice): string {
   return e.invoice.currency || "INR";

@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { subscriptions, user } from "@/db/schema";
-import { verifyWebhook, type DodoWebhookEvent } from "@/lib/dodo";
+import { verifyWebhook, classifyDodoEvent, type DodoWebhookEvent } from "@/lib/dodo";
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object"
@@ -56,6 +56,17 @@ function extractPaymentInfo(event: DodoWebhookEvent): {
   };
 }
 
+/** Extract a stable event id for log correlation / manual reconcile. */
+function eventIdOf(event: DodoWebhookEvent): string | null {
+  const data = asRecord(event.data ?? event.payload ?? event);
+  return firstString(
+    event.id,
+    data.id,
+    data.payment_id,
+    data.paymentId,
+  );
+}
+
 async function resolveUserId(
   metadataUserId: string | null,
   email: string | null,
@@ -86,11 +97,28 @@ export async function POST(req: Request) {
   console.log("dodo webhook:", event.type);
 
   try {
-    if (event.type === "payment.succeeded") {
+    const kind = classifyDodoEvent(event.type);
+    if (kind === "payment_succeeded") {
       const info = extractPaymentInfo(event);
       const userId = await resolveUserId(info.userId, info.email);
       if (!userId) {
-        return NextResponse.json({ received: true });
+        // Unmapped money: the payment is real but we cannot attribute it.
+        // There is no webhook_events table (by design — no new table), so
+        // log payment id + buyer email + event id (no secrets) and report
+        // mapped:false so ops can reconcile manually in the Dodo dashboard.
+        // Still 200 + received:true so Dodo stops retrying.
+        const eventId = eventIdOf(event);
+        console.error(
+          "dodo webhook: payment.succeeded with unresolvable user " +
+            `(event_id=${eventId ?? "unknown"} ` +
+            `customer_id=${info.customerId ?? "unknown"} ` +
+            `email=${info.email ?? "unknown"}) — manual reconcile required`,
+        );
+        return NextResponse.json({
+          received: true,
+          mapped: false,
+          ...(eventId ? { event_id: eventId } : {}),
+        });
       }
       await db
         .insert(subscriptions)
@@ -109,31 +137,33 @@ export async function POST(req: Request) {
           },
         });
     } else if (
-      event.type === "payment.failed" ||
-      event.type === "subscription.cancelled"
+      kind === "payment_failed" ||
+      kind === "subscription_cancelled" ||
+      kind === "refund_dispute"
     ) {
+      if (kind === "refund_dispute") {
+        console.error(
+          `dodo webhook: ${event.type} (event_id=${eventIdOf(event) ?? "unknown"}) — deactivating subscription`,
+        );
+      }
       const info = extractPaymentInfo(event);
       const userId = await resolveUserId(info.userId, info.email);
       if (userId) {
+        const status =
+          kind === "subscription_cancelled" ? "cancelled" : "inactive";
         await db
           .insert(subscriptions)
           .values({
             userId,
             dodoCustomerId: info.customerId,
-            status:
-              event.type === "subscription.cancelled"
-                ? "cancelled"
-                : "inactive",
+            status,
             plan: "lifetime",
           })
           .onConflictDoUpdate({
             target: subscriptions.userId,
             set: {
               dodoCustomerId: info.customerId,
-              status:
-                event.type === "subscription.cancelled"
-                  ? "cancelled"
-                  : "inactive",
+              status,
             },
           });
       }

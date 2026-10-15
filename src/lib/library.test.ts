@@ -56,4 +56,16 @@ describe("invoice library", () => {
     expect(listInvoices()).toHaveLength(0);
     expect(deleteInvoice(saved.id)).toBe(false);
   });
+
+  it("clears a stale migrated flag when a new guest invoice is saved", () => {
+    localStorage.setItem("smartbillr_migrated", "2026-01-01T00:00:00.000Z");
+    saveInvoice(DEFAULT_INVOICE);
+    expect(localStorage.getItem("smartbillr_migrated")).toBeNull();
+  });
+
+  it("clears legacy non-timestamp migrated flags on new save", () => {
+    localStorage.setItem("smartbillr_migrated", "1");
+    saveInvoice(DEFAULT_INVOICE);
+    expect(localStorage.getItem("smartbillr_migrated")).toBeNull();
+  });
 });

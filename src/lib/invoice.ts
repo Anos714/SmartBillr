@@ -71,16 +71,40 @@ export type InvoiceData = {
   accent?: string;
 };
 
+export type LineAmount = {
+  id: string;
+  /** qty * rate, Decimal-rounded to 2dp. Renderers must use this (no inline math). */
+  amount: number;
+};
+
+export type AdjustmentAmount = {
+  id: string;
+  label: string;
+  /** percentage-of-subtotal or fixed value, Decimal-rounded to 2dp. */
+  amount: number;
+};
+
 export type InvoiceTotals = {
   subtotal: number;
   discount: number;
   taxTotal: number;
   adjustmentsTotal: number;
   grandTotal: number;
+  /** Per-line amounts (qty*rate rounded). */
+  lines: LineAmount[];
+  /** Per-adjustment amounts (percentage resolved against subtotal). */
+  adjustmentsDetailed: AdjustmentAmount[];
 };
 
-const round2 = (d: Decimal): number =>
-  d.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber();
+/**
+ * Single 2dp rounding source (Decimal ROUND_HALF_UP — correct for money,
+ * e.g. 0.005 → 0.01). Accepts Decimals (exact) or plain numbers.
+ */
+export function round2(value: Decimal | number): number {
+  const d = value instanceof Decimal ? value : new Decimal(value);
+  if (!d.isFinite()) return 0;
+  return d.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber();
+}
 
 export function calcTotals(data: {
   items: InvoiceItem[];
@@ -89,6 +113,7 @@ export function calcTotals(data: {
 }): InvoiceTotals {
   let subtotal = new Decimal(0);
   let taxTotal = new Decimal(0);
+  const lines: LineAmount[] = [];
 
   for (const item of data.items) {
     const qty = new Decimal(item.qty || 0);
@@ -97,20 +122,22 @@ export function calcTotals(data: {
     subtotal = subtotal.add(line);
     const taxPct = new Decimal(item.taxPct || 0);
     taxTotal = taxTotal.add(line.mul(taxPct).div(100));
+    lines.push({ id: item.id, amount: round2(line) });
   }
 
   const discountRaw = new Decimal(data.discountFlat || 0);
   // Cap discount at subtotal, floor at 0
   const discount = Decimal.min(Decimal.max(discountRaw, 0), subtotal);
 
+  const adjustmentsDetailed: AdjustmentAmount[] = [];
   let adjustmentsTotal = new Decimal(0);
   for (const adj of data.adjustments ?? []) {
     const v = new Decimal(adj.value || 0);
-    if (adj.type === "percentage") {
-      adjustmentsTotal = adjustmentsTotal.add(subtotal.mul(v).div(100));
-    } else {
-      adjustmentsTotal = adjustmentsTotal.add(v);
-    }
+    const amount =
+      adj.type === "percentage" ? subtotal.mul(v).div(100) : v;
+    const rounded = round2(amount);
+    adjustmentsDetailed.push({ id: adj.id, label: adj.label, amount: rounded });
+    adjustmentsTotal = adjustmentsTotal.add(new Decimal(rounded));
   }
 
   const grandTotal = subtotal.sub(discount).add(taxTotal).add(adjustmentsTotal);
@@ -121,6 +148,8 @@ export function calcTotals(data: {
     taxTotal: round2(taxTotal),
     adjustmentsTotal: round2(adjustmentsTotal),
     grandTotal: round2(grandTotal),
+    lines,
+    adjustmentsDetailed,
   };
 }
 
@@ -237,52 +266,65 @@ export const DEFAULT_THEME: InvoiceTheme = {
   font: "geist",
 };
 
-export const DEFAULT_INVOICE: InvoiceData = {
-  fromName: "Acme Studio",
-  fromEmail: "hello@acmestudio.com",
-  fromAddress: "123 Main Street, Bengaluru, KA 560001",
-  logoUrl: "",
-  billToName: "Client Co",
-  billToEmail: "client@example.com",
-  billToAddress: "456 Client Road, Mumbai, MH 400001",
-  invoiceNo: "INV-0001",
-  prefix: "INV-",
-  serialNumber: "0001",
-  issueDate: new Date().toISOString().slice(0, 10),
-  dueDate: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
-  currency: "INR",
-  notes: "Thank you for your business!",
-  terms: "Payment due within 14 days.",
-  paymentTerms: "Net 14",
-  gstin: "",
-  items: [
-    {
-      id: "item-1",
-      name: "Design work",
-      description: "",
-      qty: 2,
-      rate: 100,
-      taxPct: 18,
-    },
-    {
-      id: "item-2",
-      name: "Development",
-      description: "",
-      qty: 1,
-      rate: 50,
-      taxPct: 18,
-    },
-  ],
-  discountFlat: 0,
-  adjustments: [],
-  companyMeta: [],
-  clientMeta: [],
-  paymentInfo: [],
-  signatureUrl: "",
-  theme: { ...DEFAULT_THEME },
-  templateId: "minimal-white",
-  accent: "#09090b",
-};
+/**
+ * Fresh default invoice. Call this instead of referencing DEFAULT_INVOICE:
+ * issueDate/dueDate are computed at call time, and every call returns
+ * new arrays/objects (no shared-mutable state between store instances).
+ */
+export function defaultInvoice(): InvoiceData {
+  return {
+    fromName: "Acme Studio",
+    fromEmail: "hello@acmestudio.com",
+    fromAddress: "123 Main Street, Bengaluru, KA 560001",
+    logoUrl: "",
+    billToName: "Client Co",
+    billToEmail: "client@example.com",
+    billToAddress: "456 Client Road, Mumbai, MH 400001",
+    invoiceNo: "INV-0001",
+    prefix: "INV-",
+    serialNumber: "0001",
+    issueDate: new Date().toISOString().slice(0, 10),
+    dueDate: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
+    currency: "INR",
+    notes: "Thank you for your business!",
+    terms: "Payment due within 14 days.",
+    paymentTerms: "Net 14",
+    gstin: "",
+    items: [
+      {
+        id: "item-1",
+        name: "Design work",
+        description: "",
+        qty: 2,
+        rate: 100,
+        taxPct: 18,
+      },
+      {
+        id: "item-2",
+        name: "Development",
+        description: "",
+        qty: 1,
+        rate: 50,
+        taxPct: 18,
+      },
+    ],
+    discountFlat: 0,
+    adjustments: [],
+    companyMeta: [],
+    clientMeta: [],
+    paymentInfo: [],
+    signatureUrl: "",
+    theme: { ...DEFAULT_THEME },
+    templateId: "minimal-white",
+    accent: "#09090b",
+  };
+}
+
+/**
+ * @deprecated Import-time snapshot for backward-compat only (dates are
+ * frozen at module load). New code must call `defaultInvoice()`.
+ */
+export const DEFAULT_INVOICE: InvoiceData = defaultInvoice();
 
 /** Migrate a single raw (possibly legacy) item to the current shape. */
 export function migrateItem(raw: Record<string, unknown>): InvoiceItem {
@@ -318,7 +360,9 @@ export function migrateInvoice(raw: unknown): InvoiceData {
     items?: unknown;
     theme?: unknown;
   };
-  const itemsRaw = Array.isArray(r.items) ? r.items : DEFAULT_INVOICE.items;
+  // Fresh defaults per call (no shared-mutable fallback, no stale dates).
+  const fallback = defaultInvoice();
+  const itemsRaw = Array.isArray(r.items) ? r.items : fallback.items;
   const items = itemsRaw.map((it) =>
     migrateItem((it ?? {}) as Record<string, unknown>),
   );
@@ -332,7 +376,7 @@ export function migrateInvoice(raw: unknown): InvoiceData {
   let invoiceNo =
     typeof r.invoiceNo === "string" && r.invoiceNo
       ? r.invoiceNo
-      : DEFAULT_INVOICE.invoiceNo;
+      : fallback.invoiceNo;
   if (prefix === undefined || serialNumber === undefined) {
     const split = splitInvoiceNo(invoiceNo);
     prefix ??= split.prefix;
@@ -356,17 +400,17 @@ export function migrateInvoice(raw: unknown): InvoiceData {
   };
 
   return {
-    ...DEFAULT_INVOICE,
+    ...fallback,
     ...r,
     invoiceNo,
-    prefix: prefix ?? DEFAULT_INVOICE.prefix,
-    serialNumber: serialNumber ?? DEFAULT_INVOICE.serialNumber,
+    prefix: prefix ?? fallback.prefix,
+    serialNumber: serialNumber ?? fallback.serialNumber,
     paymentTerms:
       typeof r.paymentTerms === "string"
         ? r.paymentTerms
         : (r as { terms?: unknown }).terms === undefined
-          ? DEFAULT_INVOICE.paymentTerms
-          : DEFAULT_INVOICE.paymentTerms,
+          ? fallback.paymentTerms
+          : fallback.paymentTerms,
     items,
     adjustments: Array.isArray(r.adjustments)
       ? (r.adjustments as Adjustment[])

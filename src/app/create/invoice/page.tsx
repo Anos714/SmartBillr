@@ -18,8 +18,9 @@ import {
   Info,
 } from "lucide-react";
 import { calcTotals, InvoiceSchema, invoiceDisplayNo, migrateInvoice } from "@/lib/invoice";
+import { formatMoney } from "@/lib/money";
 import { getInvoice, saveInvoice } from "@/lib/library";
-import { saveRemoteInvoice } from "@/lib/sync-client";
+import { patchRemoteInvoice, saveRemoteInvoice } from "@/lib/sync-client";
 import { useGuestStore, type MetaTarget } from "@/lib/guest-store";
 import { useSession } from "@/lib/auth-client";
 import { TEMPLATE_CATALOG, type TemplateMeta } from "@/lib/templates";
@@ -27,7 +28,9 @@ import { getTemplate, canUseTemplate } from "@/components/invoice-templates/regi
 import { PaywallModal } from "@/components/editor/PaywallModal";
 import { CustomSelect } from "@/components/ui/select";
 import { Accordion } from "@/components/editor/Accordion";
-import { AppShell, TopbarAction, topbarActionCls } from "@/components/AppShell";
+import { AppShell, TopbarAction } from "@/components/AppShell";
+import { Toast } from "@/components/ui/feedback";
+import { inputCls, labelCls, topbarActionCls } from "@/components/ui/forms";
 import {
   DownloadIcon,
   PlusIcon,
@@ -36,11 +39,6 @@ import {
 } from "@/components/icons";
 import { ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-export const inputCls =
-  "w-full rounded-xl border border-[#E7E2D8] bg-[#FFFDF8] px-3 py-2 text-sm text-[#141412] shadow-[inset_0_1px_2px_rgba(20,20,18,0.04)] outline-none transition placeholder:text-stone-400 focus:border-[#0C6B4F] focus:ring-2 focus:ring-[#0C6B4F]/25";
-export const labelCls =
-  "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[#3f3c37]";
 
 type ViewMode = "both" | "form" | "preview";
 
@@ -190,6 +188,10 @@ function EditorInner() {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pngBusy, setPngBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  // Remote id loaded via ?load= (account rows only). A ref — never rendered —
+  // so assigning it inside the load effect is effect-safe.
+  const loadedIdRef = useRef<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const errorsMenuRef = useRef<HTMLDivElement>(null);
@@ -246,23 +248,33 @@ function EditorInner() {
 
   useEffect(() => {
     const loadId = searchParams.get("load");
-    if (!loadId) return;
+    if (!loadId) {
+      loadedIdRef.current = null;
+      return;
+    }
     if (session?.user) {
       // Logged-in: fetch from API (find by id), local fallback for local ids.
-      fetch("/api/invoices")
+      fetch("/api/invoices?limit=200")
         .then((r) => (r.ok ? r.json() : null))
         .then((j: { invoices?: Array<{ id: string; invoice: unknown }> } | null) => {
           const found = j?.invoices?.find((e) => e.id === loadId);
           if (found) {
             setInvoice({ ...migrateInvoice(found.invoice) });
+            loadedIdRef.current = loadId;
           } else {
             const snapshot = getInvoice(loadId);
-            if (snapshot) setInvoice({ ...migrateInvoice(snapshot.invoice) });
+            if (snapshot) {
+              setInvoice({ ...migrateInvoice(snapshot.invoice) });
+              loadedIdRef.current = null;
+            }
           }
         })
         .catch(() => {
           const snapshot = getInvoice(loadId);
-          if (snapshot) setInvoice({ ...migrateInvoice(snapshot.invoice) });
+          if (snapshot) {
+            setInvoice({ ...migrateInvoice(snapshot.invoice) });
+            loadedIdRef.current = null;
+          }
         });
       return;
     }
@@ -270,6 +282,7 @@ function EditorInner() {
     if (snapshot) {
       setInvoice({ ...migrateInvoice(snapshot.invoice) });
     }
+    loadedIdRef.current = null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, session]);
 
@@ -329,7 +342,7 @@ function EditorInner() {
     invoiceNo: invoice.invoiceNo,
   });
 
-  const fmt = (n: number) => `${invoice.currency} ${n.toFixed(2)}`;
+  const fmt = (n: number) => formatMoney(n, invoice.currency);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -355,10 +368,28 @@ function EditorInner() {
   };
 
   const handleSaveInvoice = () => {
+    if (isSaving) return;
     if (session?.user) {
-      void saveRemoteInvoice(invoice, "draft")
-        .then(() => showToast("Saved to account"))
-        .catch(() => showToast("Save failed"));
+      setIsSaving(true);
+      const done = () => {
+        setIsSaving(false);
+        setDownloadOpen(false);
+      };
+      const loadedId = loadedIdRef.current;
+      if (loadedId) {
+        void patchRemoteInvoice(loadedId, invoice)
+          .then(() => showToast("Saved to account"))
+          .catch(() => showToast("Save failed"))
+          .finally(done);
+      } else {
+        void saveRemoteInvoice(invoice, "draft")
+          .then((id) => {
+            loadedIdRef.current = id;
+            showToast("Saved to account");
+          })
+          .catch(() => showToast("Save failed"))
+          .finally(done);
+      }
     } else {
       try {
         saveInvoice(invoice);
@@ -366,8 +397,8 @@ function EditorInner() {
       } catch {
         showToast("Save failed");
       }
+      setDownloadOpen(false);
     }
-    setDownloadOpen(false);
   };
 
   const handleDownloadPng = async () => {
@@ -553,9 +584,10 @@ function EditorInner() {
           <MenuShell label="Export">
             <MenuItem
               icon={<Save className="h-3.5 w-3.5" />}
-              label="Save Invoice"
+              label={isSaving ? "Saving…" : "Save Invoice"}
               hint="LOCAL"
               onClick={handleSaveInvoice}
+              disabled={isSaving}
             />
             <MenuItem
               icon={<Eye className="h-3.5 w-3.5" />}
@@ -1101,14 +1133,7 @@ function EditorInner() {
         </div>
       </div>
 
-      {toast ? (
-        <div
-          role="status"
-          className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#141412] px-4 py-2 text-sm font-semibold whitespace-nowrap text-white shadow-xl lg:bottom-6"
-        >
-          {toast}
-        </div>
-      ) : null}
+      <Toast message={toast} className="bottom-20 lg:bottom-6" />
 
       <PaywallModal
         templateName={locked?.name ?? ""}

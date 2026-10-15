@@ -5,6 +5,8 @@ import {
   itemTitle,
   resolveAccent,
   themeFontFamily,
+  lineAmount,
+  adjustmentAmount,
 } from "./minimal-white";
 
 const DISPLAY_SERIF = "Georgia, 'Times New Roman', serif";
@@ -161,7 +163,7 @@ export function FreelancerPopPreview({ data, totals, watermark }: TemplateProps)
                   {it.hsn ? ` · HSN ${it.hsn}` : ""}
                 </p>
               </div>
-              <p className="font-bold tabular-nums" style={{ ...TABULAR }}>{formatMoney(data.currency, it.qty * it.rate)}</p>
+              <p className="font-bold tabular-nums" style={{ ...TABULAR }}>{formatMoney(data.currency, lineAmount(totals, it.id))}</p>
             </div>
           ))}
         </div>
@@ -190,9 +192,7 @@ export function FreelancerPopPreview({ data, totals, watermark }: TemplateProps)
                   {a.type === "percentage" ? ` (${a.value}%)` : ""}
                 </span>
                 <span>
-                  {a.type === "percentage"
-                    ? formatMoney(data.currency, (totals.subtotal * a.value) / 100)
-                    : formatMoney(data.currency, a.value)}
+                  {formatMoney(data.currency, adjustmentAmount(totals, a.id))}
                 </span>
               </div>
             ))}

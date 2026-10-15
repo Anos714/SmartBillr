@@ -80,6 +80,7 @@ export const invoices = pgTable("invoices", {
   templateId: text("template_id"),
   logoUrl: text("logo_url"),
   signatureUrl: text("signature_url"),
+  paidAt: timestamp("paid_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

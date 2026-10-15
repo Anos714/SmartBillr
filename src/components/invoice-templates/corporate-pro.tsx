@@ -5,6 +5,8 @@ import {
   itemTitle,
   resolveAccent,
   themeFontFamily,
+  lineAmount,
+  adjustmentAmount,
 } from "./minimal-white";
 
 const GOLD = "#C9A227";
@@ -194,7 +196,7 @@ export function CorporateProPreview({ data, totals, watermark }: TemplateProps) 
                   className="px-3 py-3 text-right font-semibold tabular-nums"
                   style={{ fontFamily: DISPLAY_SERIF, color: strong, ...TABULAR }}
                 >
-                  {formatMoney(data.currency, it.qty * it.rate)}
+                  {formatMoney(data.currency, lineAmount(totals, it.id))}
                 </td>
               </tr>
             ))}
@@ -226,9 +228,7 @@ export function CorporateProPreview({ data, totals, watermark }: TemplateProps) 
                   {a.type === "percentage" ? ` (${a.value}%)` : ""}
                 </span>
                 <span style={{ fontFamily: DISPLAY_SERIF }}>
-                  {a.type === "percentage"
-                    ? formatMoney(data.currency, (totals.subtotal * a.value) / 100)
-                    : formatMoney(data.currency, a.value)}
+                  {formatMoney(data.currency, adjustmentAmount(totals, a.id))}
                 </span>
               </div>
             ))}
