@@ -2,14 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Trash2, Upload, PenLine, Image as ImageIcon } from "lucide-react";
+import { CldImage } from "next-cloudinary";
 import { AppShell } from "@/components/AppShell";
 import { CardIcon } from "@/components/icons";
 import { useGuestStore, DEFAULT_DETAILS_KEY } from "@/lib/guest-store";
 
 const LOGOS_KEY = "smartbillr_logos";
 const SIGNATURES_KEY = "smartbillr_signatures";
+const PUBLIC_IDS_KEY = "smartbillr_public_ids";
 const MAX_LOGO_BYTES = 400 * 1024;
 const MAX_SIG_UPLOAD_BYTES = 150 * 1024;
+
+const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? "";
+const cloudConfigured = Boolean(CLOUD_NAME);
 
 const inputCls =
   "w-full rounded-xl border border-[#E7E2D8] bg-[#FFFDF8] px-3 py-2 text-sm text-[#141412] shadow-[inset_0_1px_2px_rgba(20,20,18,0.04)] outline-none transition placeholder:text-stone-400 focus:border-[#0C6B4F] focus:ring-2 focus:ring-[#0C6B4F]/25";
@@ -54,14 +59,96 @@ function readStringList(key: string): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 }
 
+function readPublicIds(): Record<string, string> {
+  const v = readJson<unknown>(PUBLIC_IDS_KEY, {});
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    const out: Record<string, string> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+      if (typeof val === "string") out[k] = val;
+    }
+    return out;
+  }
+  return {};
+}
+
+type SignResponse =
+  | {
+      cloudName: string;
+      apiKey: string;
+      timestamp: string;
+      folder: string;
+      eager: string;
+      signature: string;
+    }
+  | { error: string };
+
+async function uploadViaCloudinary(
+  file: File,
+): Promise<{ secure_url: string; public_id: string } | null> {
+  try {
+    const signRes = await fetch("/api/cloudinary/sign", { method: "POST" });
+    if (!signRes.ok) return null;
+    const sign = (await signRes.json()) as SignResponse;
+    if (!("signature" in sign)) return null;
+    const form = new FormData();
+    form.append("file", file);
+    form.append("api_key", sign.apiKey);
+    form.append("timestamp", sign.timestamp);
+    form.append("folder", sign.folder);
+    form.append("eager", sign.eager);
+    form.append("signature", sign.signature);
+    const up = await fetch(
+      `https://api.cloudinary.com/v1_1/${sign.cloudName}/image/upload`,
+      { method: "POST", body: form },
+    );
+    if (!up.ok) return null;
+    const j = (await up.json()) as {
+      secure_url?: string;
+      public_id?: string;
+      eager?: Array<{ secure_url?: string }>;
+    };
+    const url = j.eager?.[0]?.secure_url ?? j.secure_url;
+    if (!url || !j.public_id) return null;
+    return { secure_url: url, public_id: j.public_id };
+  } catch {
+    return null;
+  }
+}
+
+function AssetImg({
+  src,
+  publicId,
+  alt,
+}: {
+  src: string;
+  publicId?: string;
+  alt: string;
+}) {
+  if (publicId && cloudConfigured) {
+    return (
+      <CldImage
+        src={publicId}
+        width={300}
+        height={100}
+        alt={alt}
+        className="h-20 w-full rounded-lg object-contain"
+      />
+    );
+  }
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt={alt} className="h-20 w-full rounded-lg object-contain" />;
+}
+
 export default function AssetsPage() {
   const setInvoice = useGuestStore((s) => s.setInvoice);
   const [details, setDetails] = useState<DetailsForm>(EMPTY_DETAILS);
   const [logos, setLogos] = useState<string[]>([]);
   const [signatures, setSignatures] = useState<string[]>([]);
+  const [publicIds, setPublicIds] = useState<Record<string, string>>({});
   const [dragOver, setDragOver] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [drawing, setDrawing] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const sigUploadRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -73,6 +160,7 @@ export default function AssetsPage() {
       setDetails({ ...EMPTY_DETAILS, ...d });
       setLogos(readStringList(LOGOS_KEY));
       setSignatures(readStringList(SIGNATURES_KEY));
+      setPublicIds(readPublicIds());
     });
     return () => cancelAnimationFrame(id);
   }, []);
@@ -95,6 +183,15 @@ export default function AssetsPage() {
     }
   };
 
+  const persistPublicIds = (next: Record<string, string>) => {
+    setPublicIds(next);
+    try {
+      localStorage.setItem(PUBLIC_IDS_KEY, JSON.stringify(next));
+    } catch {
+      // non-fatal
+    }
+  };
+
   const persistLogos = (next: string[]) => {
     setLogos(next);
     try {
@@ -113,6 +210,41 @@ export default function AssetsPage() {
     }
   };
 
+  const removeLogo = (i: number) => {
+    const src = logos[i];
+    const pid = publicIds[src];
+    persistLogos(logos.filter((_, j) => j !== i));
+    if (pid) {
+      setToast("Removed from list (cloud copy retained)");
+      const next = { ...publicIds };
+      delete next[src];
+      persistPublicIds(next);
+    }
+  };
+
+  const removeSignature = (i: number) => {
+    const src = signatures[i];
+    const pid = publicIds[src];
+    persistSignatures(signatures.filter((_, j) => j !== i));
+    if (pid) {
+      setToast("Removed from list (cloud copy retained)");
+      const next = { ...publicIds };
+      delete next[src];
+      persistPublicIds(next);
+    }
+  };
+
+  const dataUrlFallbackLogo = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        persistLogos([...logos, reader.result]);
+        setToast("Logo added");
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const acceptLogoFile = (file: File) => {
     if (!["image/png", "image/jpeg"].includes(file.type)) {
       setToast("Only PNG or JPG allowed");
@@ -122,11 +254,30 @@ export default function AssetsPage() {
       setToast("Logo must be ≤ 400KB");
       return;
     }
+    if (!cloudConfigured) {
+      dataUrlFallbackLogo(file);
+      return;
+    }
+    setUploading(true);
+    void uploadViaCloudinary(file)
+      .then((res) => {
+        if (res) {
+          persistPublicIds({ ...publicIds, [res.secure_url]: res.public_id });
+          persistLogos([...logos, res.secure_url]);
+          setToast("Logo uploaded to Cloudinary");
+        } else {
+          dataUrlFallbackLogo(file);
+        }
+      })
+      .finally(() => setUploading(false));
+  };
+
+  const dataUrlFallbackSig = (file: File) => {
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === "string") {
-        persistLogos([...logos, reader.result]);
-        setToast("Logo added");
+        persistSignatures([...signatures, reader.result]);
+        setToast("Signature added");
       }
     };
     reader.readAsDataURL(file);
@@ -141,14 +292,22 @@ export default function AssetsPage() {
       setToast("Signature must be ≤ 150KB");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        persistSignatures([...signatures, reader.result]);
-        setToast("Signature added");
-      }
-    };
-    reader.readAsDataURL(file);
+    if (!cloudConfigured) {
+      dataUrlFallbackSig(file);
+      return;
+    }
+    setUploading(true);
+    void uploadViaCloudinary(file)
+      .then((res) => {
+        if (res) {
+          persistPublicIds({ ...publicIds, [res.secure_url]: res.public_id });
+          persistSignatures([...signatures, res.secure_url]);
+          setToast("Signature uploaded to Cloudinary");
+        } else {
+          dataUrlFallbackSig(file);
+        }
+      })
+      .finally(() => setUploading(false));
   };
 
   const canvasPos = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -201,6 +360,13 @@ export default function AssetsPage() {
   return (
     <AppShell title="Manage Assets" icon={<CardIcon size={20} />} backHref="/dashboard">
       <div className="space-y-5">
+        {!cloudConfigured ? (
+          <p className="rounded-2xl border border-dashed border-stone-300 bg-white/60 px-4 py-3 text-xs text-stone-500">
+            Cloudinary not configured — uploads stay in this browser
+            (dataURL). Add Cloudinary keys in .env.local for cloud uploads
+            with f_auto/q_auto (300×100 eager for logos).
+          </p>
+        ) : null}
         {/* Default Details */}
         <section className="rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-5 shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)] sm:p-6">
           <h2 className="text-xl tracking-tight text-[#141412]" style={serif}>
@@ -287,7 +453,7 @@ export default function AssetsPage() {
           >
             <Upload className="h-6 w-6" />
             <span className="font-semibold">Drag &amp; drop a logo here, or click to upload</span>
-            <span className="text-xs">PNG / JPG ≤ 400KB</span>
+            <span className="text-xs">PNG / JPG ≤ 400KB{uploading ? " — uploading…" : ""}</span>
           </button>
           <input
             ref={logoInputRef}
@@ -305,8 +471,7 @@ export default function AssetsPage() {
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {logos.map((src, i) => (
                 <div key={i} className="rounded-xl border border-[#E7E2D8] bg-white p-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={src} alt={`Logo ${i + 1}`} className="h-20 w-full rounded-lg object-contain" />
+                  <AssetImg src={src} publicId={publicIds[src]} alt={`Logo ${i + 1}`} />
                   <div className="mt-2 flex gap-1.5">
                     <button
                       type="button"
@@ -318,7 +483,7 @@ export default function AssetsPage() {
                     <button
                       type="button"
                       aria-label={`Delete logo ${i + 1}`}
-                      onClick={() => persistLogos(logos.filter((_, j) => j !== i))}
+                      onClick={() => removeLogo(i)}
                       className="rounded-lg border border-stone-200 px-2 py-1 text-stone-400 hover:border-red-300 hover:text-red-600"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -397,8 +562,7 @@ export default function AssetsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   {signatures.map((src, i) => (
                     <div key={i} className="rounded-xl border border-[#E7E2D8] bg-white p-2">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={src} alt={`Signature ${i + 1}`} className="h-20 w-full rounded-lg object-contain" />
+                      <AssetImg src={src} publicId={publicIds[src]} alt={`Signature ${i + 1}`} />
                       <div className="mt-2 flex gap-1.5">
                         <button
                           type="button"
@@ -410,7 +574,7 @@ export default function AssetsPage() {
                         <button
                           type="button"
                           aria-label={`Delete signature ${i + 1}`}
-                          onClick={() => persistSignatures(signatures.filter((_, j) => j !== i))}
+                          onClick={() => removeSignature(i)}
                           className="rounded-lg border border-stone-200 px-2 py-1 text-stone-400 hover:border-red-300 hover:text-red-600"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
