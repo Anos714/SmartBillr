@@ -89,7 +89,7 @@ export function CustomSelect({
             role="listbox"
             id={listId}
             aria-label={ariaLabel ?? label}
-            className="absolute top-full right-0 left-0 z-40 mt-2 animate-[menu-pop_.14s_ease-out] rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8]/95 p-1.5 shadow-[0_24px_60px_-20px_rgba(20,20,18,0.45)] backdrop-blur"
+            className="absolute top-full left-0 z-40 mt-2 w-max min-w-full max-w-[90vw] animate-[menu-pop_.14s_ease-out] rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8]/95 p-1.5 shadow-[0_24px_60px_-20px_rgba(20,20,18,0.45)] backdrop-blur"
           >
             {options.map((opt) => {
               const isSelected = opt.value === value;
@@ -121,7 +121,7 @@ export function CustomSelect({
                       {isSelected ? <Check className="h-3.5 w-3.5" aria-hidden /> : null}
                     </span>
                   )}
-                  <span className="min-w-0 flex-1 truncate">{opt.label}</span>
+                  <span className="min-w-0 flex-1 whitespace-nowrap">{opt.label}</span>
                   {opt.locked ? (
                     <span className="ml-auto rounded-md border border-[#E7E2D8] bg-white px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-stone-400">
                       PRO

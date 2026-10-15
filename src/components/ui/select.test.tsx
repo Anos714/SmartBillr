@@ -73,4 +73,37 @@ describe("CustomSelect", () => {
     fireEvent.click(screen.getByRole("button", { name: "Close menu" }));
     expect(screen.queryByRole("listbox")).toBeNull();
   });
+
+  it("renders full option labels untruncated in a content-sized menu", () => {
+    const onChange = vi.fn();
+    render(
+      <CustomSelect
+        id="status-filter"
+        label="Status"
+        value="all"
+        onChange={onChange}
+        options={[
+          { value: "all", label: "All" },
+          { value: "draft", label: "Draft" },
+          { value: "pending", label: "Pending" },
+          { value: "paid", label: "Paid" },
+          { value: "overdue", label: "Overdue" },
+        ]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Status" }));
+    const box = screen.getByRole("listbox");
+    // Menu grows to content (never narrower than the button).
+    expect(box.className).toMatch(/w-max/);
+    expect(box.className).toMatch(/min-w-full/);
+    // Every label renders in full, not truncated to "A…"/"D…".
+    for (const label of ["All", "Draft", "Pending", "Paid", "Overdue"]) {
+      const option = screen.getByRole("option", { name: label });
+      expect(option).toHaveTextContent(label);
+      expect(option.textContent).toBe(label);
+    }
+    // Labels must not truncate with ellipsis.
+    const labels = box.querySelectorAll("span.whitespace-nowrap");
+    expect(labels.length).toBe(5);
+  });
 });
