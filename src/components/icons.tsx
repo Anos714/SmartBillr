@@ -30,13 +30,16 @@ function Base({
   );
 }
 
-/** Duo = solid primary shape + secondary shape at 25% opacity */
+/** Sharp geometric bolt — mirrors the V3 wordmark bolt (solid + hairline outline). */
 export function BoltIcon(props: IconProps) {
   return (
-    <Base {...props}>
-      <path d="M14 2 5 13.5h6.5L10 22 19.5 10h-6.5L14 2Z" fill="currentColor" stroke="none" />
-      <path d="M14 2 5 13.5h6.5L10 22" fill="currentColor" opacity={0.25} stroke="none" />
-      <path d="M14 2 5 13.5h6.5L10 22 19.5 10h-6.5L14 2Z" />
+    <Base {...props} strokeLinejoin="miter" strokeLinecap="square">
+      <path
+        d="M13.2 2 5.6 13.4h5.5L10 22l8.4-11.6h-5.5L13.2 2Z"
+        fill="currentColor"
+        stroke="none"
+      />
+      <path d="M13.2 2 5.6 13.4h5.5L10 22l8.4-11.6h-5.5L13.2 2Z" fill="none" />
     </Base>
   );
 }

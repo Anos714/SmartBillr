@@ -1,50 +1,47 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { PDFDownloadLink } from "@react-pdf/renderer";
-import { Trash2, Share2 } from "lucide-react";
-import { calcTotals, invoiceDisplayNo } from "@/lib/invoice";
-import { BackButton } from "@/components/BackButton";
+import { PDFDownloadLink, pdf } from "@react-pdf/renderer";
+import {
+  Trash2,
+  Upload,
+  ChevronDown,
+  Eye,
+  Save,
+  AlertTriangle,
+  Building2,
+  User,
+  FileText,
+  List,
+  Info,
+} from "lucide-react";
+import { calcTotals, InvoiceSchema, invoiceDisplayNo, migrateInvoice } from "@/lib/invoice";
 import { useGuestStore, type MetaTarget } from "@/lib/guest-store";
 import { TEMPLATE_CATALOG, type TemplateMeta } from "@/lib/templates";
 import { getTemplate, canUseTemplate } from "@/components/invoice-templates/registry";
-import { TemplatePicker } from "@/components/editor/TemplatePicker";
 import { PaywallModal } from "@/components/editor/PaywallModal";
+import { Accordion } from "@/components/editor/Accordion";
+import { AppShell, TopbarAction, topbarActionCls } from "@/components/AppShell";
 import {
   DownloadIcon,
   PlusIcon,
   InvoiceIcon,
   CheckIcon,
-  PaletteIcon,
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
-const BASE_COLORS = [
-  { name: "green", value: "#0C6B4F" },
-  { name: "navy", value: "#1e3a8a" },
-  { name: "ink", value: "#141412" },
-  { name: "violet", value: "#7c3aed" },
-];
+const LIB_KEY = "smartbillr_invoices";
 
 const inputCls =
   "w-full rounded-xl border border-[#E7E2D8] bg-[#FFFDF8] px-3 py-2 text-sm text-[#141412] shadow-[inset_0_1px_2px_rgba(20,20,18,0.04)] outline-none transition placeholder:text-stone-400 focus:border-[#0C6B4F] focus:ring-2 focus:ring-[#0C6B4F]/25";
 const labelCls =
   "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[#3f3c37]";
-const cardCls =
-  "rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-4 shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)] sm:p-5";
-const titleCls = "text-lg font-bold text-stone-900";
 
-function StepBadge({ n }: { n: number }) {
-  return (
-    <span
-      aria-hidden
-      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#0C6B4F] to-[#4d9a7a] font-mono text-xs font-extrabold text-white shadow"
-    >
-      {n}
-    </span>
-  );
-}
+type ViewMode = "both" | "form" | "preview";
+
+const menuItemCls =
+  "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50";
 
 function GripHandle() {
   return (
@@ -95,9 +92,9 @@ function MetaRows({ target, title }: { target: MetaTarget; title: string }) {
         <button
           type="button"
           onClick={() => addMeta(target)}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-[#0C6B4F] hover:underline"
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-stone-300 px-3 py-2 text-xs font-semibold text-stone-500 transition hover:border-[#0C6B4F]/60 hover:text-[#0C6B4F]"
         >
-          <PlusIcon size={14} /> Add row
+          <PlusIcon size={14} /> Add New Field
         </button>
       </div>
     </div>
@@ -120,12 +117,25 @@ function EditorInner() {
   } = useGuestStore();
   const [locked, setLocked] = useState<TemplateMeta | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [savedDefault, setSavedDefault] = useState(false);
+  const [view, setView] = useState<ViewMode>("both");
+  const [openSection, setOpenSection] = useState("company");
+  const [errorsOpen, setErrorsOpen] = useState(false);
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(id);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -148,6 +158,9 @@ function EditorInner() {
     [invoice.items, invoice.discountFlat, invoice.adjustments],
   );
 
+  const validation = useMemo(() => InvoiceSchema.safeParse(invoice), [invoice]);
+  const issues = validation.success ? [] : validation.error.issues;
+
   const template = getTemplate(invoice.templateId);
   const PdfDocument = template.PdfDocument;
   const Preview = template.Preview;
@@ -162,16 +175,16 @@ function EditorInner() {
     invoiceNo: invoice.invoiceNo,
   });
 
-  const share = async () => {
-    const url = window.location.href;
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
+  const fmt = (n: number) => `${invoice.currency} ${n.toFixed(2)}`;
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 2200);
   };
+
+  const toggleSection = (id: string) =>
+    setOpenSection((cur) => (cur === id ? "" : id));
 
   const setPrefixSerial = (prefix: string, serial: string) => {
     setInvoice({
@@ -187,61 +200,290 @@ function EditorInner() {
     setTimeout(() => setSavedDefault(false), 2000);
   };
 
+  const handleSaveInvoice = () => {
+    try {
+      const raw = localStorage.getItem(LIB_KEY);
+      const lib = raw ? (JSON.parse(raw) as unknown[]) : [];
+      const id =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `inv-${Date.now()}`;
+      lib.push({ id, savedAt: new Date().toISOString(), invoice });
+      localStorage.setItem(LIB_KEY, JSON.stringify(lib));
+      showToast("Saved");
+    } catch {
+      showToast("Save failed");
+    }
+    setDownloadOpen(false);
+  };
+
+  const handleViewPdf = async () => {
+    setPdfBusy(true);
+    try {
+      const blob = await pdf(
+        <PdfDocument data={invoice} totals={totals} watermark={true} />,
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch {
+      showToast("Could not open PDF");
+    } finally {
+      setPdfBusy(false);
+      setDownloadOpen(false);
+    }
+  };
+
+  const handleImportFile = async (file: File) => {
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as unknown;
+      const raw =
+        parsed && typeof parsed === "object" && "invoice" in parsed
+          ? (parsed as { invoice: unknown }).invoice
+          : parsed;
+      const migrated = migrateInvoice(raw);
+      setInvoice({ ...migrated });
+      showToast("Imported");
+    } catch {
+      showToast("Import failed");
+    }
+  };
+
   const pdfDoc = mounted ? (
     <PdfDocument data={invoice} totals={totals} watermark={true} />
   ) : null;
   const fileName = `${displayNo || "invoice"}.pdf`;
 
-  return (
-    <div className="paper-texture min-h-screen bg-[#F7F5F0] pb-24 lg:pb-0">
-      {/* Floating dark topbar pill */}
-      <div className="sticky top-3 z-30 px-4">
-        <header className="mx-auto flex max-w-5xl items-center gap-2 rounded-full border border-white/10 bg-[#141412] py-2 pr-2 pl-4 text-white shadow-xl">
-          <BackButton href="/templates" className="border-white/15 text-white/80" />
-          <span className="inline-flex items-center gap-1.5 truncate text-sm font-semibold">
-            <InvoiceIcon size={18} className="shrink-0 text-[#D9F452]" />
-            <span className="hidden sm:inline">{template.meta.name}</span>
-            <span className="sm:hidden">{displayNo}</span>
-          </span>
-          <span className="ml-auto hidden items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs text-white/60 md:inline-flex">
-            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-            Saved {savedLabel}
-          </span>
-          <button
-            type="button"
-            onClick={share}
-            className="inline-flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 text-sm font-medium text-white/90 transition hover:border-[#D9F452]/60 hover:text-[#D9F452]"
-          >
-            <Share2 className="h-4 w-4" /> {copied ? "Copied!" : "Share"}
-          </button>
-          {mounted && pdfDoc ? (
-            <PDFDownloadLink
-              document={pdfDoc}
-              fileName={fileName}
-              className="inline-flex items-center gap-1.5 rounded-full bg-[#0C6B4F] px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-[#0a5a42] hover:shadow-[0_0_20px_-4px_#0C6B4F]"
-            >
-              {({ loading }) => (
-                <>
-                  <DownloadIcon size={16} />
-                  {loading ? "Preparing…" : "Download"}
-                </>
-              )}
-            </PDFDownloadLink>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-1.5 text-sm font-semibold text-white/60">
-              <DownloadIcon size={16} /> Download
+  const actions = (
+    <>
+      <span className="hidden shrink-0 items-center gap-1.5 text-xs whitespace-nowrap text-stone-400 xl:inline-flex">
+        <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+        Saved {savedLabel}
+      </span>
+
+      <div className="relative shrink-0">
+        <TopbarAction
+          onClick={() => {
+            setErrorsOpen((o) => !o);
+            setDownloadOpen(false);
+          }}
+          aria-expanded={errorsOpen}
+          aria-label={`Validation errors, ${issues.length} found`}
+        >
+          <AlertTriangle className="h-3.5 w-3.5" /> Errors
+          {issues.length > 0 ? (
+            <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+              {issues.length}
             </span>
-          )}
-        </header>
+          ) : null}
+        </TopbarAction>
+        {errorsOpen ? (
+          <div className="absolute top-full right-0 z-40 mt-2 max-h-80 w-72 overflow-auto rounded-xl border border-[#E7E2D8] bg-white p-2 shadow-xl">
+            {issues.length === 0 ? (
+              <p className="px-2 py-3 text-center text-xs text-stone-500">
+                No issues — looks good.
+              </p>
+            ) : (
+              <ul className="space-y-1">
+                {issues.map((issue, i) => (
+                  <li key={i} className="rounded-lg bg-red-50 px-2 py-1.5 text-xs">
+                    <span className="font-mono font-bold text-red-700">
+                      {issue.path.join(".") || "invoice"}
+                    </span>{" "}
+                    <span className="text-stone-600">{issue.message}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : null}
       </div>
 
-      <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[440px_1fr]">
-        {/* Left panel: stacked cards */}
-        <section className="space-y-4">
-          {/* Business */}
-          <div className={cardCls}>
-            <div className="flex items-center gap-2.5"><StepBadge n={1} /><h2 className={titleCls}>Business</h2></div>
-            <p className="mb-3 text-xs text-stone-500">Your brand shown on the invoice.</p>
+      <TopbarAction onClick={() => fileRef.current?.click()}>
+        <Upload className="h-3.5 w-3.5" /> Import
+      </TopbarAction>
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".json,application/json"
+        className="hidden"
+        aria-hidden
+        tabIndex={-1}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) void handleImportFile(file);
+          e.target.value = "";
+        }}
+      />
+
+      <div
+        className="flex shrink-0 overflow-hidden rounded-lg border border-[#E7E2D8] text-xs font-semibold"
+        role="group"
+        aria-label="Editor view"
+      >
+        {(["both", "form", "preview"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setView(m)}
+            aria-pressed={view === m}
+            className={cn(
+              "px-2.5 py-1.5 capitalize",
+              view === m ? "bg-[#141412] text-white" : "bg-[#FFFDF8] text-stone-500",
+            )}
+          >
+            {m === "both" ? "Both" : m === "form" ? "Form" : "Preview"}
+          </button>
+        ))}
+      </div>
+
+      <div className="relative flex shrink-0 items-center">
+        {mounted && pdfDoc ? (
+          <PDFDownloadLink
+            document={pdfDoc}
+            fileName={fileName}
+            className="inline-flex items-center gap-1.5 rounded-l-lg bg-[#0C6B4F] px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-white transition hover:bg-[#0a5a42]"
+          >
+            {({ loading }) => (
+              <>
+                <DownloadIcon size={14} />
+                {loading ? "Preparing…" : "Download"}
+              </>
+            )}
+          </PDFDownloadLink>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-l-lg bg-stone-300 px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-white">
+            <DownloadIcon size={14} /> Download
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            setDownloadOpen((o) => !o);
+            setErrorsOpen(false);
+          }}
+          aria-expanded={downloadOpen}
+          aria-label="More download options"
+          className="rounded-r-lg border-l border-white/25 bg-[#0C6B4F] px-1.5 py-1.5 text-white transition hover:bg-[#0a5a42]"
+        >
+          <ChevronDown className={cn("h-4 w-4 transition-transform", downloadOpen && "rotate-180")} />
+        </button>
+        {downloadOpen ? (
+          <div
+            className="absolute top-full right-0 z-40 mt-2 w-52 rounded-xl border border-[#E7E2D8] bg-white p-1 shadow-xl"
+            role="menu"
+          >
+            <button type="button" role="menuitem" onClick={handleSaveInvoice} className={menuItemCls}>
+              <Save className="h-3.5 w-3.5" /> Save Invoice
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => void handleViewPdf()}
+              disabled={pdfBusy}
+              className={menuItemCls}
+            >
+              <Eye className="h-3.5 w-3.5" /> {pdfBusy ? "Opening…" : "View PDF"}
+            </button>
+            {mounted && pdfDoc ? (
+              <PDFDownloadLink
+                document={pdfDoc}
+                fileName={fileName}
+                className={menuItemCls}
+                onClick={() => setDownloadOpen(false)}
+              >
+                {({ loading }) => (
+                  <>
+                    <DownloadIcon size={14} />
+                    {loading ? "Preparing…" : "Download PDF"}
+                  </>
+                )}
+              </PDFDownloadLink>
+            ) : null}
+            <button
+              type="button"
+              role="menuitem"
+              disabled
+              title="coming in next commit"
+              className={menuItemCls}
+            >
+              Download PNG (soon)
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </>
+  );
+
+  return (
+    <AppShell
+      title="Create Invoice"
+      icon={<InvoiceIcon size={20} />}
+      actions={actions}
+      backHref="/templates"
+    >
+      <div className="grid items-start gap-5 pb-24 lg:grid-cols-[400px_minmax(0,1fr)] lg:pb-0">
+        {/* Left: form column */}
+        <div className={cn("min-w-0 space-y-4", view === "preview" && "hidden")}>
+          {/* Invoice Template selects row */}
+          <section className="rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-4 shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)] sm:p-5">
+            <h2 className="text-sm font-bold text-stone-900">Invoice Template</h2>
+            <p className="mb-3 text-xs text-stone-500">Design, color, mode &amp; font.</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className={labelCls} htmlFor="template-select">Template</label>
+                <select
+                  id="template-select"
+                  className={inputCls}
+                  value={invoice.templateId}
+                  onChange={(e) => {
+                    const meta = TEMPLATE_CATALOG.find((t) => t.id === e.target.value);
+                    if (!meta) return;
+                    if (!canUseTemplate(false, meta.id)) {
+                      setLocked(meta);
+                      return;
+                    }
+                    setInvoice({ templateId: meta.id, accent: meta.accent });
+                  }}
+                >
+                  {TEMPLATE_CATALOG.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}{t.isFree ? "" : " — PRO"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls} htmlFor="font-select">Font</label>
+                <select
+                  id="font-select"
+                  className={inputCls}
+                  value={invoice.theme?.font ?? "geist"}
+                  onChange={(e) =>
+                    setInvoice({
+                      theme: {
+                        ...(invoice.theme ?? { baseColor: "#0C6B4F", mode: "light" as const }),
+                        font: e.target.value as "geist" | "inter" | "serif",
+                      },
+                    })
+                  }
+                >
+                  <option value="geist">Geist</option>
+                  <option value="inter">Inter</option>
+                  <option value="serif">Serif</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <Accordion
+            id="company"
+            title="Company Details"
+            subtitle="Your brand shown on the invoice"
+            icon={<Building2 className="h-5 w-5" />}
+            open={openSection === "company"}
+            onToggle={() => toggleSection("company")}
+          >
             <div className="space-y-3">
               <div>
                 <label className={labelCls}>Logo URL</label>
@@ -270,23 +512,13 @@ function EditorInner() {
                   onChange={(e) => setInvoice({ fromName: e.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className={labelCls}>Email</label>
-                  <input
-                    className={inputCls}
-                    value={invoice.fromEmail}
-                    onChange={(e) => setInvoice({ fromEmail: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>GSTIN (optional)</label>
-                  <input
-                    className={inputCls}
-                    value={invoice.gstin ?? ""}
-                    onChange={(e) => setInvoice({ gstin: e.target.value })}
-                  />
-                </div>
+              <div>
+                <label className={labelCls}>Email</label>
+                <input
+                  className={inputCls}
+                  value={invoice.fromEmail}
+                  onChange={(e) => setInvoice({ fromEmail: e.target.value })}
+                />
               </div>
               <div>
                 <label className={labelCls}>Address</label>
@@ -295,6 +527,14 @@ function EditorInner() {
                   rows={2}
                   value={invoice.fromAddress}
                   onChange={(e) => setInvoice({ fromAddress: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className={labelCls}>GSTIN (optional)</label>
+                <input
+                  className={inputCls}
+                  value={invoice.gstin ?? ""}
+                  onChange={(e) => setInvoice({ gstin: e.target.value })}
                 />
               </div>
               <MetaRows target="companyMeta" title="Business details" />
@@ -307,12 +547,16 @@ function EditorInner() {
                 {savedDefault ? "Saved as default!" : "Save as default"}
               </button>
             </div>
-          </div>
+          </Accordion>
 
-          {/* Client */}
-          <div className={cardCls}>
-            <div className="flex items-center gap-2.5"><StepBadge n={2} /><h2 className={titleCls}>Client</h2></div>
-            <p className="mb-3 text-xs text-stone-500">Who is this invoice for?</p>
+          <Accordion
+            id="client"
+            title="Client Details"
+            subtitle="Who is this invoice for?"
+            icon={<User className="h-5 w-5" />}
+            open={openSection === "client"}
+            onToggle={() => toggleSection("client")}
+          >
             <div className="space-y-3">
               <div>
                 <label className={labelCls}>Name</label>
@@ -341,161 +585,78 @@ function EditorInner() {
               </div>
               <MetaRows target="clientMeta" title="Client details" />
             </div>
-          </div>
+          </Accordion>
 
-          {/* Invoice */}
-          <div className={cardCls}>
-            <div className="flex items-center gap-2.5"><StepBadge n={3} /><h2 className={titleCls}>Invoice</h2></div>
-            <p className="mb-3 text-xs text-stone-500">
-              Number preview: <span className="font-bold text-stone-800">{displayNo || "INV-0001"}</span>
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelCls}>Prefix</label>
-                <input
-                  className={inputCls}
-                  value={invoice.prefix ?? ""}
-                  placeholder="INV-"
-                  onChange={(e) => setPrefixSerial(e.target.value, invoice.serialNumber ?? "")}
-                />
-              </div>
-              <div>
-                <label className={labelCls}>Serial</label>
-                <input
-                  className={inputCls}
-                  value={invoice.serialNumber ?? ""}
-                  placeholder="0001"
-                  onChange={(e) => setPrefixSerial(invoice.prefix ?? "", e.target.value)}
-                />
-              </div>
-              <div>
-                <label className={labelCls}>Issue date</label>
-                <input
-                  type="date"
-                  className={inputCls}
-                  value={invoice.issueDate}
-                  onChange={(e) => setInvoice({ issueDate: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className={labelCls}>Due date</label>
-                <input
-                  type="date"
-                  className={inputCls}
-                  value={invoice.dueDate}
-                  onChange={(e) => setInvoice({ dueDate: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className={labelCls}>Currency</label>
-                <select
-                  className={inputCls}
-                  value={invoice.currency}
-                  onChange={(e) =>
-                    setInvoice({ currency: e.target.value as typeof invoice.currency })
-                  }
-                >
-                  <option value="INR">INR</option>
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
-                </select>
-              </div>
-              <div>
-                <label className={labelCls}>Payment terms</label>
-                <input
-                  className={inputCls}
-                  placeholder="Net 14"
-                  value={invoice.paymentTerms ?? ""}
-                  onChange={(e) => setInvoice({ paymentTerms: e.target.value })}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Items */}
-          <div className={cardCls}>
-            <div className="flex items-center gap-2.5"><StepBadge n={4} /><h2 className={titleCls}>Items</h2></div>
-            <p className="mb-3 text-xs text-stone-500">Name + description per row.</p>
+          <Accordion
+            id="invoice"
+            title="Invoice Details"
+            subtitle={`Number preview: ${displayNo || "INV-0001"}`}
+            icon={<FileText className="h-5 w-5" />}
+            open={openSection === "invoice"}
+            onToggle={() => toggleSection("invoice")}
+          >
             <div className="space-y-3">
-              {invoice.items.map((it) => (
-                <div key={it.id} className="group space-y-2 rounded-xl border border-[#E7E2D8] bg-white p-3 transition hover:border-[#0C6B4F]/40 hover:shadow-[0_8px_20px_-12px_rgba(12,107,79,0.4)]">
-                  <div className="flex items-center gap-1">
-                    <GripHandle />
-                    <input
-                      className={cn(inputCls, "font-semibold")}
-                      value={it.name}
-                      onChange={(e) => updateItem(it.id, { name: e.target.value })}
-                      placeholder="Item name"
-                      aria-label="Item name"
-                    />
-                  </div>
-                  <textarea
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Prefix</label>
+                  <input
                     className={inputCls}
-                    rows={1}
-                    value={it.description ?? ""}
-                    onChange={(e) => updateItem(it.id, { description: e.target.value })}
-                    placeholder="Description (optional)"
-                    aria-label="Item description"
+                    value={invoice.prefix ?? ""}
+                    placeholder="INV-"
+                    onChange={(e) => setPrefixSerial(e.target.value, invoice.serialNumber ?? "")}
                   />
-                  <div className="grid grid-cols-4 gap-2">
-                    <div>
-                      <label className={labelCls}>Qty</label>
-                      <input
-                        type="number" min={0} step="any" className={inputCls}
-                        value={it.qty}
-                        onChange={(e) => updateItem(it.id, { qty: Number(e.target.value) })}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Rate</label>
-                      <input
-                        type="number" min={0} step="any" className={inputCls}
-                        value={it.rate}
-                        onChange={(e) => updateItem(it.id, { rate: Number(e.target.value) })}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Tax%</label>
-                      <input
-                        type="number" min={0} max={100} step="any" className={inputCls}
-                        value={it.taxPct}
-                        onChange={(e) => updateItem(it.id, { taxPct: Number(e.target.value) })}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelCls}>HSN</label>
-                      <input
-                        className={inputCls}
-                        value={it.hsn ?? ""}
-                        placeholder="—"
-                        onChange={(e) => updateItem(it.id, { hsn: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeItem(it.id)}
-                    className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-stone-400 transition hover:bg-red-50 hover:text-red-600"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" /> Remove
-                  </button>
                 </div>
-              ))}
-              <button
-                type="button"
-                onClick={addItem}
-                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#0C6B4F] px-3 py-2.5 text-sm font-semibold text-white hover:bg-[#0a5a42]"
-              >
-                <PlusIcon size={16} /> Add item
-              </button>
-            </div>
-          </div>
-
-          {/* Totals */}
-          <div className={cardCls}>
-            <div className="flex items-center gap-2.5"><StepBadge n={5} /><h2 className={titleCls}>Totals</h2></div>
-            <p className="mb-3 text-xs text-stone-500">Discounts, taxes, shipping & payment.</p>
-            <div className="space-y-3">
+                <div>
+                  <label className={labelCls}>Serial</label>
+                  <input
+                    className={inputCls}
+                    value={invoice.serialNumber ?? ""}
+                    placeholder="0001"
+                    onChange={(e) => setPrefixSerial(invoice.prefix ?? "", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Issue date</label>
+                  <input
+                    type="date"
+                    className={inputCls}
+                    value={invoice.issueDate}
+                    onChange={(e) => setInvoice({ issueDate: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Due date</label>
+                  <input
+                    type="date"
+                    className={inputCls}
+                    value={invoice.dueDate}
+                    onChange={(e) => setInvoice({ dueDate: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Currency</label>
+                  <select
+                    className={inputCls}
+                    value={invoice.currency}
+                    onChange={(e) =>
+                      setInvoice({ currency: e.target.value as typeof invoice.currency })
+                    }
+                  >
+                    <option value="INR">INR</option>
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Payment terms</label>
+                  <input
+                    className={inputCls}
+                    placeholder="Net 14"
+                    value={invoice.paymentTerms ?? ""}
+                    onChange={(e) => setInvoice({ paymentTerms: e.target.value })}
+                  />
+                </div>
+              </div>
               <div>
                 <label className={labelCls}>Discount (flat)</label>
                 <input
@@ -557,6 +718,122 @@ function EditorInner() {
                   </button>
                 </div>
               </div>
+            </div>
+          </Accordion>
+
+          <Accordion
+            id="items"
+            title="Invoice Items"
+            subtitle="Name + description per row"
+            icon={<List className="h-5 w-5" />}
+            open={openSection === "items"}
+            onToggle={() => toggleSection("items")}
+          >
+            <div className="space-y-3">
+              {invoice.items.map((it) => (
+                <div key={it.id} className="group space-y-2 rounded-xl border border-[#E7E2D8] bg-white p-3 transition hover:border-[#0C6B4F]/40 hover:shadow-[0_8px_20px_-12px_rgba(12,107,79,0.4)]">
+                  <div className="flex items-center gap-1">
+                    <GripHandle />
+                    <input
+                      className={cn(inputCls, "font-semibold")}
+                      value={it.name}
+                      onChange={(e) => updateItem(it.id, { name: e.target.value })}
+                      placeholder="Item name"
+                      aria-label="Item name"
+                    />
+                  </div>
+                  <textarea
+                    className={inputCls}
+                    rows={1}
+                    value={it.description ?? ""}
+                    onChange={(e) => updateItem(it.id, { description: e.target.value })}
+                    placeholder="Description (optional)"
+                    aria-label="Item description"
+                  />
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div>
+                      <label className={labelCls}>Qty</label>
+                      <input
+                        type="number" min={0} step="any" className={inputCls}
+                        value={it.qty}
+                        onChange={(e) => updateItem(it.id, { qty: Number(e.target.value) })}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Rate</label>
+                      <input
+                        type="number" min={0} step="any" className={inputCls}
+                        value={it.rate}
+                        onChange={(e) => updateItem(it.id, { rate: Number(e.target.value) })}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Tax%</label>
+                      <input
+                        type="number" min={0} max={100} step="any" className={inputCls}
+                        value={it.taxPct}
+                        onChange={(e) => updateItem(it.id, { taxPct: Number(e.target.value) })}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>HSN</label>
+                      <input
+                        className={inputCls}
+                        value={it.hsn ?? ""}
+                        placeholder="—"
+                        onChange={(e) => updateItem(it.id, { hsn: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeItem(it.id)}
+                    className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-stone-400 transition hover:bg-red-50 hover:text-red-600"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Remove
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addItem}
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#0C6B4F] px-3 py-2.5 text-sm font-semibold text-white hover:bg-[#0a5a42]"
+              >
+                <PlusIcon size={16} /> Add item
+              </button>
+              <dl className="space-y-1 rounded-xl bg-stone-50 p-3 text-xs">
+                <div className="flex justify-between text-stone-600">
+                  <dt>Subtotal</dt><dd className="font-semibold">{fmt(totals.subtotal)}</dd>
+                </div>
+                <div className="flex justify-between text-stone-600">
+                  <dt>Tax</dt><dd className="font-semibold">{fmt(totals.taxTotal)}</dd>
+                </div>
+                <div className="flex justify-between text-sm font-bold text-[#0C6B4F]">
+                  <dt>Total</dt><dd>{fmt(totals.grandTotal)}</dd>
+                </div>
+              </dl>
+            </div>
+          </Accordion>
+
+          <Accordion
+            id="more"
+            title="Additional Information"
+            subtitle="Notes, terms & payment"
+            icon={<Info className="h-5 w-5" />}
+            open={openSection === "more"}
+            onToggle={() => toggleSection("more")}
+          >
+            <div className="space-y-3">
+              <div>
+                <label className={labelCls}>Notes</label>
+                <textarea className={inputCls} rows={2} value={invoice.notes}
+                  onChange={(e) => setInvoice({ notes: e.target.value })} />
+              </div>
+              <div>
+                <label className={labelCls}>Terms</label>
+                <textarea className={inputCls} rows={2} value={invoice.terms}
+                  onChange={(e) => setInvoice({ terms: e.target.value })} />
+              </div>
               <MetaRows target="paymentInfo" title="Payment info (bank / UPI)" />
               <div>
                 <label className={labelCls}>Signature image URL (optional)</label>
@@ -567,109 +844,12 @@ function EditorInner() {
                   onChange={(e) => setInvoice({ signatureUrl: e.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-1 gap-3">
-                <div>
-                  <label className={labelCls}>Notes</label>
-                  <textarea className={inputCls} rows={2} value={invoice.notes}
-                    onChange={(e) => setInvoice({ notes: e.target.value })} />
-                </div>
-                <div>
-                  <label className={labelCls}>Terms</label>
-                  <textarea className={inputCls} rows={2} value={invoice.terms}
-                    onChange={(e) => setInvoice({ terms: e.target.value })} />
-                </div>
-              </div>
             </div>
-          </div>
-
-          {/* Design */}
-          <div className={cardCls}>
-            <div className="flex items-center gap-2.5"><StepBadge n={6} /><h2 className={titleCls}>Design</h2></div>
-            <p className="mb-3 flex items-center gap-1 text-xs text-stone-500">
-              <PaletteIcon size={14} /> Template, color, mode & font.
-            </p>
-            <div className="space-y-4">
-              <TemplatePicker
-                selectedId={invoice.templateId}
-                isPro={false}
-                onSelect={(t) => setInvoice({ templateId: t.id, accent: t.accent })}
-                onLocked={(t) => setLocked(t)}
-              />
-              <div>
-                <p className={labelCls}>Brand color</p>
-                <div className="flex gap-2">
-                  {BASE_COLORS.map((c) => (
-                    <button
-                      key={c.name}
-                      type="button"
-                      title={c.name}
-                      aria-label={`Brand color ${c.name}`}
-                      onClick={() =>
-                        setInvoice({
-                          theme: { ...(invoice.theme ?? { mode: "light", font: "geist" }), baseColor: c.value },
-                          accent: c.value,
-                        })
-                      }
-                      className={cn(
-                        "h-8 w-8 rounded-full border-2",
-                        (invoice.theme?.baseColor ?? invoice.accent) === c.value
-                          ? "border-[#0C6B4F] ring-2 ring-[#0C6B4F]/30"
-                          : "border-transparent",
-                      )}
-                      style={{ backgroundColor: c.value }}
-                    />
-                  ))}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className={labelCls}>Mode</p>
-                  <div className="flex overflow-hidden rounded-lg border border-stone-200 text-sm font-semibold">
-                    {(["light", "dark"] as const).map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() =>
-                          setInvoice({ theme: { ...(invoice.theme ?? { baseColor: "#0C6B4F", font: "geist" }), mode: m } })
-                        }
-                        className={cn(
-                          "flex-1 px-3 py-2 capitalize",
-                          (invoice.theme?.mode ?? "light") === m
-                            ? "bg-[#141412] text-white"
-                            : "text-stone-500",
-                        )}
-                      >
-                        {m}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className={labelCls}>Font</p>
-                  <select
-                    className={inputCls}
-                    value={invoice.theme?.font ?? "geist"}
-                    onChange={(e) =>
-                      setInvoice({
-                        theme: {
-                          ...(invoice.theme ?? { baseColor: "#0C6B4F", mode: "light" }),
-                          font: e.target.value as "geist" | "inter" | "serif",
-                        },
-                      })
-                    }
-                  >
-                    <option value="geist">Geist</option>
-                    <option value="inter">Inter</option>
-                    <option value="serif">Serif</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+          </Accordion>
+        </div>
 
         {/* Right: sticky live preview */}
-        <section className="lg:sticky lg:top-20 lg:self-start">
+        <div className={cn("min-w-0 lg:sticky lg:top-[76px]", view === "form" && "hidden")}>
           <div className="mb-3 flex items-center justify-between px-1">
             <span className="inline-flex items-center gap-2 rounded-full border border-[#E7E2D8] bg-[#FFFDF8] px-3 py-1 font-mono text-[11px] font-bold tracking-widest text-[#0C6B4F] uppercase">
               <span className="relative flex h-2 w-2">
@@ -683,18 +863,35 @@ function EditorInner() {
           <div className="paper-texture overflow-auto rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-4 shadow-[0_30px_60px_-30px_rgba(20,20,18,0.45)] sm:p-6">
             <Preview data={invoice} totals={totals} watermark={true} />
           </div>
-        </section>
-      </main>
+          <dl className="mt-4 space-y-1.5 rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-4 text-sm shadow-[0_10px_30px_-18px_rgba(20,20,18,0.35)]">
+            <div className="flex justify-between text-stone-600">
+              <dt>Subtotal</dt><dd className="font-semibold">{fmt(totals.subtotal)}</dd>
+            </div>
+            <div className="flex justify-between text-stone-600">
+              <dt>Discount</dt><dd className="font-semibold">− {fmt(totals.discount)}</dd>
+            </div>
+            <div className="flex justify-between text-stone-600">
+              <dt>Tax</dt><dd className="font-semibold">{fmt(totals.taxTotal)}</dd>
+            </div>
+            <div className="flex justify-between text-stone-600">
+              <dt>Adjustments</dt><dd className="font-semibold">{fmt(totals.adjustmentsTotal)}</dd>
+            </div>
+            <div className="flex justify-between border-t border-[#E7E2D8] pt-2 text-base font-bold text-[#0C6B4F]">
+              <dt>Grand total</dt><dd>{fmt(totals.grandTotal)}</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
 
       {/* Mobile sticky bottom bar */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-stone-200 bg-white/95 p-3 backdrop-blur lg:hidden">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-stone-500">Saved {savedLabel}</span>
+          <span className="shrink-0 text-xs text-stone-500">Saved {savedLabel}</span>
           {mounted && pdfDoc ? (
             <PDFDownloadLink
               document={pdfDoc}
               fileName={fileName}
-              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#0C6B4F] px-4 py-3 text-sm font-semibold text-white"
+              className={cn(topbarActionCls, "flex-1 justify-center !border-0 bg-[#0C6B4F] !py-3 text-sm !text-white hover:!text-white")}
             >
               {({ loading }) => (
                 <>
@@ -711,12 +908,21 @@ function EditorInner() {
         </div>
       </div>
 
+      {toast ? (
+        <div
+          role="status"
+          className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#141412] px-4 py-2 text-sm font-semibold whitespace-nowrap text-white shadow-xl lg:bottom-6"
+        >
+          {toast}
+        </div>
+      ) : null}
+
       <PaywallModal
         templateName={locked?.name ?? ""}
         open={locked !== null}
         onClose={() => setLocked(null)}
       />
-    </div>
+    </AppShell>
   );
 }
 
