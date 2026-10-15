@@ -4,6 +4,8 @@ import { invoiceDisplayNo } from "@/lib/invoice";
 import "@/lib/pdf-font";
 import { INVOICE_PDF_FONT_FAMILY } from "@/lib/pdf-font";
 
+const GOLD = "#C9A227";
+
 const money = (currency: string, value: number) => {
   try {
     return new Intl.NumberFormat("en-US", {
@@ -20,9 +22,6 @@ const money = (currency: string, value: number) => {
 const itemName = (it: { name?: string; desc?: string }) =>
   (it.name && it.name.trim()) || (it.desc && it.desc.trim()) || "Untitled item";
 
-const serifLetterSpacing = (font: string | undefined) =>
-  font === "serif" ? 0.2 : font === "inter" ? 0.4 : 0.3;
-
 const styles = StyleSheet.create({
   page: {
     fontSize: 10,
@@ -38,13 +37,13 @@ const styles = StyleSheet.create({
   },
   header: { padding: 36, paddingBottom: 28 },
   headerLabel: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: "bold",
     color: "rgba(255,255,255,0.6)",
     textTransform: "uppercase",
-    letterSpacing: 3,
+    letterSpacing: 2,
   },
-  headerNo: { fontSize: 30, fontWeight: "bold", color: "#ffffff", marginTop: 4 },
+  headerNo: { fontSize: 34, fontWeight: "bold", color: "#ffffff", marginTop: 6 },
   headerCompany: { fontSize: 12, fontWeight: "bold", color: "#ffffff", marginTop: 10 },
   headerSub: { color: "rgba(255,255,255,0.75)", marginTop: 2, fontSize: 9 },
   headerMeta: { textAlign: "right", color: "rgba(255,255,255,0.8)", fontSize: 9 },
@@ -60,35 +59,38 @@ const styles = StyleSheet.create({
     textAlign: "center",
     borderRadius: 4,
   },
+  goldRule: { height: 3, backgroundColor: GOLD },
+  hairlineRule: { height: 1 },
   body: { padding: 36, paddingTop: 24, paddingBottom: 72 },
   partiesRow: { flexDirection: "row", gap: 24 },
   partyCol: { width: "50%" },
   partyColRight: { width: "50%", textAlign: "right" },
-  partyLabel: { fontSize: 8, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 1.5 },
-  partyName: { fontSize: 11, fontWeight: "bold", marginTop: 4 },
+  partyLabel: { fontSize: 9, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 2 },
+  partyName: { fontSize: 12, fontWeight: "bold", marginTop: 6 },
   partyLine: { marginTop: 2, maxWidth: 260 },
-  tableHead: { flexDirection: "row", marginTop: 20, paddingVertical: 8, paddingHorizontal: 10 },
-  headText: { fontSize: 8, fontWeight: "bold", color: "#ffffff", textTransform: "uppercase" },
-  tableRow: { flexDirection: "row", borderBottomWidth: 1, paddingVertical: 7, paddingHorizontal: 10 },
+  tableHead: { flexDirection: "row", marginTop: 28, paddingVertical: 9, paddingHorizontal: 10 },
+  headText: { fontSize: 9, fontWeight: "bold", color: "#ffffff", textTransform: "uppercase", letterSpacing: 2 },
+  tableRow: { flexDirection: "row", borderBottomWidth: 1, paddingVertical: 8, paddingHorizontal: 10 },
   colDesc: { flex: 1 },
   colQty: { width: 50, textAlign: "right" },
   colRate: { width: 80, textAlign: "right" },
   colTax: { width: 50, textAlign: "right" },
   colAmt: { width: 80, textAlign: "right", fontWeight: "bold" },
-  itemDescSmall: { fontSize: 8, marginTop: 2 },
-  totalsWrap: { alignItems: "flex-end", marginTop: 16 },
+  itemName: { fontSize: 11, fontWeight: "bold" },
+  itemDescSmall: { fontSize: 9, marginTop: 2 },
+  totalsWrap: { alignItems: "flex-end", marginTop: 28 },
   totalsBox: { width: 256 },
   totalRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4, fontSize: 10 },
-  divider: { borderTopWidth: 2, marginTop: 2, marginBottom: 6 },
-  grandRow: { flexDirection: "row", justifyContent: "space-between", fontSize: 14, fontWeight: "bold" },
-  payBlock: { marginTop: 16 },
-  payLabel: { fontSize: 9, fontWeight: "bold", textTransform: "uppercase" },
+  grandLabel: { fontSize: 9, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 2 },
+  grandValue: { fontSize: 22, fontWeight: "bold" },
+  payBlock: { marginTop: 28 },
+  payLabel: { fontSize: 9, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 2, color: GOLD },
   payLine: { fontSize: 8, marginTop: 2 },
-  notesRow: { flexDirection: "row", marginTop: 16, gap: 24 },
+  notesRow: { flexDirection: "row", marginTop: 28, gap: 24 },
   notesCol: { width: "50%" },
-  notesLabel: { fontSize: 9, fontWeight: "bold", textTransform: "uppercase" },
-  notesText: { fontSize: 10, marginTop: 4 },
-  sigRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 20 },
+  notesLabel: { fontSize: 9, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 2, color: GOLD },
+  notesText: { fontSize: 9, marginTop: 4 },
+  sigRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 28 },
   sigBox: { alignItems: "flex-end" },
   sigImage: { width: 120, height: 36, objectFit: "contain" },
   sigSpacer: { width: 160, height: 36, borderBottomWidth: 1 },
@@ -99,7 +101,6 @@ const styles = StyleSheet.create({
 export function CorporateProPdfDocument({ data, totals, watermark }: TemplateProps) {
   const accent = data.theme?.baseColor || data.accent || "#0F172A";
   const dark = data.theme?.mode === "dark";
-  const ls = serifLetterSpacing(data.theme?.font);
   const no = invoiceDisplayNo({
     prefix: data.prefix ?? "",
     serialNumber: data.serialNumber ?? "",
@@ -115,7 +116,7 @@ export function CorporateProPdfDocument({ data, totals, watermark }: TemplatePro
         <View style={[styles.header, { backgroundColor: accent }]}>
           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
             <View>
-              <Text style={[styles.headerLabel, { letterSpacing: ls + 2.5 }]}>Invoice</Text>
+              <Text style={styles.headerLabel}>Invoice</Text>
               <Text style={styles.headerNo}>{no}</Text>
               <Text style={styles.headerCompany}>{data.fromName}</Text>
               <Text style={styles.headerSub}>{data.fromEmail}</Text>
@@ -129,11 +130,13 @@ export function CorporateProPdfDocument({ data, totals, watermark }: TemplatePro
             </View>
           </View>
         </View>
+        <View style={styles.goldRule} />
+        <View style={[styles.hairlineRule, { backgroundColor: hairline }]} />
 
         <View style={styles.body}>
           <View style={styles.partiesRow}>
             <View style={styles.partyCol}>
-              <Text style={[styles.partyLabel, { color: accent }]}>Billed by</Text>
+              <Text style={[styles.partyLabel, { color: dark ? GOLD : accent }]}>Billed by</Text>
               <Text style={[styles.partyName, { color: strong }]}>{data.fromName}</Text>
               <Text style={[styles.partyLine, { color: body }]}>{data.fromEmail}</Text>
               <Text style={[styles.partyLine, { color: body }]}>{data.fromAddress}</Text>
@@ -145,7 +148,7 @@ export function CorporateProPdfDocument({ data, totals, watermark }: TemplatePro
               ))}
             </View>
             <View style={styles.partyColRight}>
-              <Text style={[styles.partyLabel, { color: accent }]}>Billed to</Text>
+              <Text style={[styles.partyLabel, { color: dark ? GOLD : accent }]}>Billed to</Text>
               <Text style={[styles.partyName, { color: strong }]}>{data.billToName}</Text>
               <Text style={[styles.partyLine, { color: body }]}>{data.billToEmail}</Text>
               <Text style={[styles.partyLine, { color: body }]}>{data.billToAddress}</Text>
@@ -164,10 +167,12 @@ export function CorporateProPdfDocument({ data, totals, watermark }: TemplatePro
             <Text style={[styles.colTax, styles.headText]}>Tax%</Text>
             <Text style={[styles.colAmt, styles.headText]}>Amount</Text>
           </View>
+          <View style={styles.goldRule} />
+          <View style={[styles.hairlineRule, { backgroundColor: hairline }]} />
           {data.items.map((it) => (
             <View key={it.id} style={[styles.tableRow, { borderBottomColor: hairline }]}>
               <View style={styles.colDesc}>
-                <Text style={{ color: strong }}>{itemName(it)}</Text>
+                <Text style={[styles.itemName, { color: strong }]}>{itemName(it)}</Text>
                 {it.description ? <Text style={[styles.itemDescSmall, { color: muted }]}>{it.description}</Text> : null}
                 {it.hsn ? <Text style={[styles.itemDescSmall, { color: muted }]}>HSN: {it.hsn}</Text> : null}
               </View>
@@ -212,17 +217,18 @@ export function CorporateProPdfDocument({ data, totals, watermark }: TemplatePro
                     <Text>{money(data.currency, totals.adjustmentsTotal)}</Text>
                   </View>
                 ) : null}
-                <View style={[styles.divider, { borderTopColor: accent }]} />
-                <View style={[styles.grandRow, { color: strong }]}>
-                  <Text>Total</Text>
-                  <Text>{money(data.currency, totals.grandTotal)}</Text>
+                <View style={styles.goldRule} />
+                <View style={[styles.hairlineRule, { backgroundColor: hairline, marginBottom: 8, marginTop: 3 }]} />
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }}>
+                  <Text style={[styles.grandLabel, { color: muted }]}>Total</Text>
+                  <Text style={[styles.grandValue, { color: strong }]}>{money(data.currency, totals.grandTotal)}</Text>
                 </View>
               </View>
             </View>
 
             {(data.paymentInfo ?? []).length > 0 ? (
               <View style={styles.payBlock}>
-                <Text style={[styles.payLabel, { color: accent }]}>Payment info</Text>
+                <Text style={styles.payLabel}>Payment info</Text>
                 {(data.paymentInfo ?? []).map((m, i) => (
                   <Text key={i} style={[styles.payLine, { color: body }]}>
                     {m.label ? `${m.label}: ` : ""}{m.value}
@@ -236,7 +242,7 @@ export function CorporateProPdfDocument({ data, totals, watermark }: TemplatePro
                 <View style={styles.notesCol}>
                   {data.notes ? (
                     <>
-                      <Text style={[styles.notesLabel, { color: accent }]}>Notes</Text>
+                      <Text style={styles.notesLabel}>Notes</Text>
                       <Text style={[styles.notesText, { color: body }]}>{data.notes}</Text>
                     </>
                   ) : null}
@@ -244,7 +250,7 @@ export function CorporateProPdfDocument({ data, totals, watermark }: TemplatePro
                 <View style={styles.notesCol}>
                   {data.terms ? (
                     <>
-                      <Text style={[styles.notesLabel, { color: accent }]}>Terms</Text>
+                      <Text style={styles.notesLabel}>Terms</Text>
                       <Text style={[styles.notesText, { color: body }]}>{data.terms}</Text>
                     </>
                   ) : null}
