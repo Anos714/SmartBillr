@@ -17,9 +17,8 @@ export function BoldDarkPreview({ data, totals, watermark }: TemplateProps) {
   const line = dark ? "#262626" : "#2a2a2a";
   return (
     <div
-      className="mx-auto w-full max-w-[800px] overflow-hidden text-sm shadow-sm"
+      className="mx-auto w-full max-w-[800px] text-sm shadow-sm"
       style={{
-        aspectRatio: "1 / 1.414",
         backgroundColor: bg,
         color: "#fafafa",
         fontFamily,
@@ -190,7 +189,7 @@ export function BoldDarkPreview({ data, totals, watermark }: TemplateProps) {
               <span>Tax</span>
               <span>{formatMoney(data.currency, totals.taxTotal)}</span>
             </div>
-            {totals.adjustmentsTotal !== 0 ? (
+            {(data.adjustments ?? []).length > 1 && totals.adjustmentsTotal !== 0 ? (
               <div className="flex justify-between">
                 <span>Adjustments</span>
                 <span>{formatMoney(data.currency, totals.adjustmentsTotal)}</span>

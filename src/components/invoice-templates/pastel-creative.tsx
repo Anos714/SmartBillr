@@ -19,7 +19,7 @@ export function PastelCreativePreview({ data, totals, watermark }: TemplateProps
   return (
     <div
       className="mx-auto w-full max-w-[800px] p-6 text-sm sm:p-8"
-      style={{ aspectRatio: "1 / 1.414", backgroundColor: bg, color: ink, fontFamily }}
+      style={{ backgroundColor: bg, color: ink, fontFamily }}
     >
       {/* Header card: logo / invoice no / dates */}
       <div
@@ -201,7 +201,7 @@ export function PastelCreativePreview({ data, totals, watermark }: TemplateProps
             <span>Tax</span>
             <span style={{ color: ink }}>{formatMoney(data.currency, totals.taxTotal)}</span>
           </div>
-          {totals.adjustmentsTotal !== 0 ? (
+          {(data.adjustments ?? []).length > 1 && totals.adjustmentsTotal !== 0 ? (
             <div className="flex justify-between">
               <span>Adjustments</span>
               <span style={{ color: ink }}>{formatMoney(data.currency, totals.adjustmentsTotal)}</span>

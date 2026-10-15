@@ -20,8 +20,8 @@ export function ConsultingRetainerPreview({ data, totals, watermark }: TemplateP
   const totalHours = data.items.reduce((s, it) => s + (it.qty || 0), 0);
   return (
     <div
-      className="mx-auto w-full max-w-[800px] overflow-hidden text-sm shadow-sm"
-      style={{ aspectRatio: "1 / 1.414", backgroundColor: dark ? "#100f0d" : "#ffffff", color: ink, fontFamily: SERIF }}
+      className="mx-auto w-full max-w-[800px] text-sm shadow-sm"
+      style={{ backgroundColor: dark ? "#100f0d" : "#ffffff", color: ink, fontFamily: SERIF }}
     >
       <div className="px-8 pt-8 sm:px-12" style={{ borderTop: `4px solid ${accent}` }}>
         <div className="flex items-start justify-between gap-6">
@@ -110,8 +110,21 @@ export function ConsultingRetainerPreview({ data, totals, watermark }: TemplateP
           <div className="w-60 space-y-1 text-[10pt]" style={{ color: body }}>
             <div className="flex justify-between"><span>Subtotal</span><span>{formatMoney(data.currency, totals.subtotal)}</span></div>
             <div className="flex justify-between"><span>Discount</span><span>-{formatMoney(data.currency, totals.discount)}</span></div>
+            {(data.adjustments ?? []).map((a) => (
+              <div key={a.id} className="flex justify-between text-xs">
+                <span>
+                  {a.label || "Adjustment"}
+                  {a.type === "percentage" ? ` (${a.value}%)` : ""}
+                </span>
+                <span>
+                  {a.type === "percentage"
+                    ? formatMoney(data.currency, (totals.subtotal * a.value) / 100)
+                    : formatMoney(data.currency, a.value)}
+                </span>
+              </div>
+            ))}
             <div className="flex justify-between"><span>Tax</span><span>{formatMoney(data.currency, totals.taxTotal)}</span></div>
-            {totals.adjustmentsTotal !== 0 ? (
+            {(data.adjustments ?? []).length > 1 && totals.adjustmentsTotal !== 0 ? (
               <div className="flex justify-between"><span>Adjustments</span><span>{formatMoney(data.currency, totals.adjustmentsTotal)}</span></div>
             ) : null}
             <div className="border-t-2 pt-2" style={{ borderColor: accent }} aria-hidden />

@@ -191,6 +191,8 @@ function EditorInner() {
   const [toast, setToast] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const errorsMenuRef = useRef<HTMLDivElement>(null);
+  const downloadMenuRef = useRef<HTMLDivElement>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -205,6 +207,41 @@ function EditorInner() {
       if (toastTimer.current) clearTimeout(toastTimer.current);
     };
   }, []);
+
+  // Close the header menus on outside click / Escape (no fixed backdrop, so
+  // menu items always receive their clicks).
+  useEffect(() => {
+    if (!errorsOpen && !downloadOpen) return;
+    const onPointerDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        errorsOpen &&
+        errorsMenuRef.current &&
+        !errorsMenuRef.current.contains(target)
+      ) {
+        setErrorsOpen(false);
+      }
+      if (
+        downloadOpen &&
+        downloadMenuRef.current &&
+        !downloadMenuRef.current.contains(target)
+      ) {
+        setDownloadOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setErrorsOpen(false);
+        setDownloadOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [errorsOpen, downloadOpen]);
 
   useEffect(() => {
     const loadId = searchParams.get("load");
@@ -374,7 +411,7 @@ function EditorInner() {
         Saved {savedLabel}
       </span>
 
-      <div className="relative shrink-0">
+      <div ref={errorsMenuRef} className="relative shrink-0">
         <TopbarAction
           onClick={() => {
             setErrorsOpen((o) => !o);
@@ -455,7 +492,7 @@ function EditorInner() {
         ))}
       </div>
 
-      <div className="relative flex shrink-0 items-center">
+      <div ref={downloadMenuRef} className="relative flex shrink-0 items-center">
         {mounted && pdfDoc ? (
           <PDFDownloadLink
             document={pdfDoc}
@@ -539,17 +576,6 @@ function EditorInner() {
       actions={actions}
       backHref="/templates"
     >
-      {(errorsOpen || downloadOpen) ? (
-        <button
-          type="button"
-          aria-label="Close menu"
-          onClick={() => {
-            setErrorsOpen(false);
-            setDownloadOpen(false);
-          }}
-          className="fixed inset-0 z-30 cursor-default bg-transparent"
-        />
-      ) : null}
       <div
         className={cn(
           "grid items-start gap-5 pb-24 lg:pb-0",
@@ -1000,7 +1026,7 @@ function EditorInner() {
           <div
             ref={previewRef}
             id="invoice-preview"
-            className="paper-texture overflow-auto rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-4 shadow-[0_30px_60px_-30px_rgba(20,20,18,0.45)] sm:p-6"
+            className="paper-texture rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-4 shadow-[0_30px_60px_-30px_rgba(20,20,18,0.45)] sm:p-6"
           >
             <Preview data={invoice} totals={totals} watermark={watermark} />
           </div>

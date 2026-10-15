@@ -14,9 +14,8 @@ export function FreelancerPopPreview({ data, totals, watermark }: TemplateProps)
   const no = displayNo(data);
   return (
     <div
-      className="mx-auto w-full max-w-[800px] overflow-hidden rounded-xl text-sm shadow-sm"
+      className="mx-auto w-full max-w-[800px] rounded-xl text-sm shadow-sm"
       style={{
-        aspectRatio: "1 / 1.414",
         backgroundColor: dark ? "#1c1917" : "#ffffff",
         color: dark ? "#f5f4f0" : "#18181b",
         fontFamily,
@@ -156,7 +155,7 @@ export function FreelancerPopPreview({ data, totals, watermark }: TemplateProps)
               <span>Tax</span>
               <span>{formatMoney(data.currency, totals.taxTotal)}</span>
             </div>
-            {totals.adjustmentsTotal !== 0 ? (
+            {(data.adjustments ?? []).length > 1 && totals.adjustmentsTotal !== 0 ? (
               <div className="flex justify-between">
                 <span>Adjustments</span>
                 <span>{formatMoney(data.currency, totals.adjustmentsTotal)}</span>
