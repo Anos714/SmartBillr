@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { calcTotals, InvoiceSchema, invoiceDisplayNo, migrateInvoice } from "@/lib/invoice";
 import { getInvoice, saveInvoice } from "@/lib/library";
+import { saveRemoteInvoice } from "@/lib/sync-client";
 import { useGuestStore, type MetaTarget } from "@/lib/guest-store";
 import { useSession } from "@/lib/auth-client";
 import { TEMPLATE_CATALOG, type TemplateMeta } from "@/lib/templates";
@@ -246,12 +247,31 @@ function EditorInner() {
   useEffect(() => {
     const loadId = searchParams.get("load");
     if (!loadId) return;
+    if (session?.user) {
+      // Logged-in: fetch from API (find by id), local fallback for local ids.
+      fetch("/api/invoices")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j: { invoices?: Array<{ id: string; invoice: unknown }> } | null) => {
+          const found = j?.invoices?.find((e) => e.id === loadId);
+          if (found) {
+            setInvoice({ ...migrateInvoice(found.invoice) });
+          } else {
+            const snapshot = getInvoice(loadId);
+            if (snapshot) setInvoice({ ...migrateInvoice(snapshot.invoice) });
+          }
+        })
+        .catch(() => {
+          const snapshot = getInvoice(loadId);
+          if (snapshot) setInvoice({ ...migrateInvoice(snapshot.invoice) });
+        });
+      return;
+    }
     const snapshot = getInvoice(loadId);
     if (snapshot) {
       setInvoice({ ...migrateInvoice(snapshot.invoice) });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, session]);
 
   useEffect(() => {
     if (!session?.user) return;
@@ -335,11 +355,17 @@ function EditorInner() {
   };
 
   const handleSaveInvoice = () => {
-    try {
-      saveInvoice(invoice);
-      showToast("Saved");
-    } catch {
-      showToast("Save failed");
+    if (session?.user) {
+      void saveRemoteInvoice(invoice, "draft")
+        .then(() => showToast("Saved to account"))
+        .catch(() => showToast("Save failed"));
+    } else {
+      try {
+        saveInvoice(invoice);
+        showToast("Saved");
+      } catch {
+        showToast("Save failed");
+      }
     }
     setDownloadOpen(false);
   };
