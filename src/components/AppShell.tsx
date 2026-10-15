@@ -221,7 +221,7 @@ export function AppShell({
                 </h1>
               </span>
               {actions ? (
-                <div className="ml-auto flex min-w-0 items-center gap-1.5 overflow-x-auto">
+                <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
                   {actions}
                 </div>
               ) : null}

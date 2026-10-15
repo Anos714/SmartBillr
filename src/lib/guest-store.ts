@@ -50,6 +50,8 @@ type GuestState = {
   saveAsDefault: () => void;
   loadDefault: () => void;
   reset: () => void;
+  /** Read persisted invoice from localStorage (client only). SSR-safe init stays default. */
+  rehydrate: () => void;
 };
 
 function isBrowser(): boolean {
@@ -57,12 +59,16 @@ function isBrowser(): boolean {
 }
 
 function loadInitial(): { invoice: InvoiceData; updatedAt: string | null } {
-  if (!isBrowser()) {
-    return { invoice: DEFAULT_INVOICE, updatedAt: null };
-  }
+  // Always return defaults so SSR and first client render match.
+  // Persisted state is loaded via rehydrate() inside a mount effect.
+  return { invoice: DEFAULT_INVOICE, updatedAt: null };
+}
+
+function readPersisted(): { invoice: InvoiceData; updatedAt: string | null } | null {
+  if (!isBrowser()) return null;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { invoice: DEFAULT_INVOICE, updatedAt: null };
+    if (!raw) return null;
     const parsed = JSON.parse(raw) as {
       invoice?: unknown;
       updatedAt?: string | null;
@@ -72,14 +78,14 @@ function loadInitial(): { invoice: InvoiceData; updatedAt: string | null } {
       typeof parsed.invoice !== "object" ||
       !Array.isArray((parsed.invoice as { items?: unknown }).items)
     ) {
-      return { invoice: DEFAULT_INVOICE, updatedAt: null };
+      return null;
     }
     return {
       invoice: migrateInvoice(parsed.invoice),
       updatedAt: parsed.updatedAt ?? null,
     };
   } catch {
-    return { invoice: DEFAULT_INVOICE, updatedAt: null };
+    return null;
   }
 }
 
@@ -256,11 +262,17 @@ export const useGuestStore = create<GuestState>()((set) => ({
       invoice: DEFAULT_INVOICE,
       updatedAt: new Date().toISOString(),
     })),
+
+  rehydrate: () => {
+    const persisted = readPersisted();
+    if (persisted) {
+      set({ invoice: persisted.invoice, updatedAt: persisted.updatedAt });
+    }
+  },
 }));
 
 // Persist on every set via subscribe (no login required)
 if (isBrowser()) {
-  persist(useGuestStore.getState().invoice, useGuestStore.getState().updatedAt);
   useGuestStore.subscribe((s) => {
     persist(s.invoice, s.updatedAt);
   });
