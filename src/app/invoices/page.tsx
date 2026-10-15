@@ -15,6 +15,14 @@ import {
   type InvoiceStatus,
   type SavedInvoice,
 } from "@/lib/library";
+import {
+  deleteRemoteInvoice,
+  duplicateRemoteInvoice,
+  fetchRemoteInvoices,
+  patchRemoteStatus,
+} from "@/lib/sync-client";
+import { useSession } from "@/lib/auth-client";
+import { MigrateBanner } from "@/components/MigrateBanner";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 8;
@@ -35,15 +43,33 @@ function serialOf(e: SavedInvoice): string {
 
 export default function InvoicesPage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const isAccount = Boolean(session?.user);
   const [invoices, setInvoices] = useState<SavedInvoice[]>([]);
   const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [status, setStatus] = useState<StatusFilter>("all");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [toast, setToast] = useState<string | null>(null);
 
-  const refresh = () => setInvoices(listInvoices());
+  const refresh = () => {
+    if (isAccount) {
+      setLoading(true);
+      setLoadError(null);
+      fetchRemoteInvoices()
+        .then((rows) => setInvoices(rows))
+        .catch(() => {
+          setLoadError("Could not load invoices");
+          setToast("Could not load invoices");
+        })
+        .finally(() => setLoading(false));
+      return;
+    }
+    setInvoices(listInvoices());
+  };
 
   useEffect(() => {
     const id = requestAnimationFrame(() => {
@@ -51,7 +77,8 @@ export default function InvoicesPage() {
       setMounted(true);
     });
     return () => cancelAnimationFrame(id);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAccount]);
 
   useEffect(() => {
     if (!toast) return;
@@ -93,12 +120,31 @@ export default function InvoicesPage() {
   };
 
   const handleDuplicate = (id: string) => {
+    if (isAccount) {
+      const entry = invoices.find((e) => e.id === id);
+      if (!entry) {
+        setToast("Duplicate failed");
+        return;
+      }
+      duplicateRemoteInvoice(entry)
+        .then(() => setToast("Duplicated"))
+        .catch(() => setToast("Duplicate failed"))
+        .finally(() => refresh());
+      return;
+    }
     const copy = duplicateInvoice(id);
     setToast(copy ? "Duplicated" : "Duplicate failed");
     refresh();
   };
 
   const handleMarkPaid = (id: string) => {
+    if (isAccount) {
+      patchRemoteStatus(id, "paid")
+        .then(() => setToast("Marked paid"))
+        .catch(() => setToast("Update failed"))
+        .finally(() => refresh());
+      return;
+    }
     const ok = updateStatus(id, "paid");
     setToast(ok ? "Marked paid" : "Update failed");
     refresh();
@@ -106,6 +152,13 @@ export default function InvoicesPage() {
 
   const handleDelete = (id: string) => {
     if (!window.confirm("Delete this invoice?")) return;
+    if (isAccount) {
+      deleteRemoteInvoice(id)
+        .then(() => setToast("Deleted"))
+        .catch(() => setToast("Delete failed"))
+        .finally(() => refresh());
+      return;
+    }
     const ok = deleteInvoice(id);
     setToast(ok ? "Deleted" : "Delete failed");
     refresh();
@@ -135,6 +188,7 @@ export default function InvoicesPage() {
       actions={actions}
       backHref="/dashboard"
     >
+      <MigrateBanner onSynced={refresh} />
       {filtersOpen ? (
         <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8] p-4 sm:flex-row sm:items-end">
           <div>
@@ -176,8 +230,27 @@ export default function InvoicesPage() {
         </div>
       ) : null}
 
-      {!mounted ? (
+      {!mounted || (isAccount && loading && invoices.length === 0) ? (
         <p className="p-8 text-sm text-stone-500">Loading invoices…</p>
+      ) : loadError && invoices.length === 0 ? (
+        <section className="mx-auto flex max-w-md flex-col items-center rounded-3xl border border-[#E7E2D8] bg-[#FFFDF8] px-8 py-14 text-center">
+          <h2
+            className="mt-5 text-2xl tracking-tight text-[#141412]"
+            style={{ fontFamily: "var(--font-display), Georgia, serif" }}
+          >
+            Could not load invoices
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-stone-500">
+            Something went wrong fetching your account invoices.
+          </p>
+          <button
+            type="button"
+            onClick={refresh}
+            className="mt-6 rounded-xl bg-[#0C6B4F] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0a5a42]"
+          >
+            Retry
+          </button>
+        </section>
       ) : rows.length === 0 ? (
         <section className="mx-auto flex max-w-md flex-col items-center rounded-3xl border border-[#E7E2D8] bg-[#FFFDF8] px-8 py-14 text-center">
           <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[#0C6B4F]/10 text-[#0C6B4F]">
@@ -234,7 +307,7 @@ export default function InvoicesPage() {
                   <tr key={e.id} className="hover:bg-stone-50/60">
                     <td className="px-4 py-3">
                       <span className="rounded-full border border-[#0C6B4F]/25 bg-[#0C6B4F]/5 px-2 py-0.5 text-[11px] font-bold text-[#0C6B4F]">
-                        local
+                        {isAccount ? "account" : "local"}
                       </span>
                     </td>
                     <td className="px-4 py-3 font-mono text-xs font-semibold">

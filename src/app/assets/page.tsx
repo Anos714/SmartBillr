@@ -6,6 +6,13 @@ import { CldImage } from "next-cloudinary";
 import { AppShell } from "@/components/AppShell";
 import { CardIcon } from "@/components/icons";
 import { useGuestStore, DEFAULT_DETAILS_KEY } from "@/lib/guest-store";
+import { useSession } from "@/lib/auth-client";
+import {
+  createRemoteAsset,
+  deleteRemoteAsset,
+  fetchRemoteAssets,
+  type RemoteAsset,
+} from "@/lib/sync-client";
 
 const LOGOS_KEY = "smartbillr_logos";
 const SIGNATURES_KEY = "smartbillr_signatures";
@@ -141,10 +148,17 @@ function AssetImg({
 
 export default function AssetsPage() {
   const setInvoice = useGuestStore((s) => s.setInvoice);
+  const { data: session } = useSession();
+  // Logged-in users persist logos/signatures to /api/assets-db (DB lists only);
+  // guests keep using localStorage only.
+  const isAccount = Boolean(session?.user);
   const [details, setDetails] = useState<DetailsForm>(EMPTY_DETAILS);
   const [logos, setLogos] = useState<string[]>([]);
   const [signatures, setSignatures] = useState<string[]>([]);
   const [publicIds, setPublicIds] = useState<Record<string, string>>({});
+  const [remoteAssets, setRemoteAssets] = useState<RemoteAsset[]>([]);
+  const [remoteLoading, setRemoteLoading] = useState(false);
+  const [remoteError, setRemoteError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [drawing, setDrawing] = useState(false);
@@ -170,6 +184,73 @@ export default function AssetsPage() {
     const t = setTimeout(() => setToast(null), 2200);
     return () => clearTimeout(t);
   }, [toast]);
+
+  const refreshRemoteAssets = async () => {
+    setRemoteLoading(true);
+    setRemoteError(null);
+    try {
+      setRemoteAssets(await fetchRemoteAssets());
+    } catch {
+      setRemoteError("Could not load account assets");
+      setToast("Could not load account assets");
+    } finally {
+      setRemoteLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAccount) return;
+    const id = requestAnimationFrame(() => {
+      void refreshRemoteAssets();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [isAccount]);
+
+  const shownLogos = isAccount
+    ? remoteAssets.filter((a) => a.type === "logo").map((a) => a.url)
+    : logos;
+  const shownSignatures = isAccount
+    ? remoteAssets.filter((a) => a.type === "signature").map((a) => a.url)
+    : signatures;
+  const shownPublicIds: Record<string, string> = isAccount
+    ? Object.fromEntries(
+        remoteAssets
+          .filter((a) => typeof a.publicId === "string" && a.publicId)
+          .map((a) => [a.url, a.publicId as string]),
+      )
+    : publicIds;
+
+  const addLogoUrl = (url: string, publicId?: string) => {
+    if (isAccount) {
+      setUploading(true);
+      void createRemoteAsset({ type: "logo", url, publicId })
+        .then(() => {
+          setToast("Logo saved to account");
+          return refreshRemoteAssets();
+        })
+        .catch(() => setToast("Logo save failed"))
+        .finally(() => setUploading(false));
+      return;
+    }
+    persistLogos([...logos, url]);
+    setToast("Logo added");
+  };
+
+  const addSignatureUrl = (url: string, publicId?: string) => {
+    if (isAccount) {
+      setUploading(true);
+      void createRemoteAsset({ type: "signature", url, publicId })
+        .then(() => {
+          setToast("Signature saved to account");
+          return refreshRemoteAssets();
+        })
+        .catch(() => setToast("Signature save failed"))
+        .finally(() => setUploading(false));
+      return;
+    }
+    persistSignatures([...signatures, url]);
+    setToast("Signature added");
+  };
 
   const set = (k: keyof DetailsForm) => (v: string) =>
     setDetails((d) => ({ ...d, [k]: v }));
@@ -211,6 +292,21 @@ export default function AssetsPage() {
   };
 
   const removeLogo = (i: number) => {
+    if (isAccount) {
+      const url = shownLogos[i];
+      const row = remoteAssets.find((a) => a.type === "logo" && a.url === url);
+      if (!row) {
+        setToast("Remove failed");
+        return;
+      }
+      void deleteRemoteAsset(row.id)
+        .then(() => {
+          setToast("Logo removed");
+          return refreshRemoteAssets();
+        })
+        .catch(() => setToast("Remove failed"));
+      return;
+    }
     const src = logos[i];
     const pid = publicIds[src];
     persistLogos(logos.filter((_, j) => j !== i));
@@ -223,6 +319,23 @@ export default function AssetsPage() {
   };
 
   const removeSignature = (i: number) => {
+    if (isAccount) {
+      const url = shownSignatures[i];
+      const row = remoteAssets.find(
+        (a) => a.type === "signature" && a.url === url,
+      );
+      if (!row) {
+        setToast("Remove failed");
+        return;
+      }
+      void deleteRemoteAsset(row.id)
+        .then(() => {
+          setToast("Signature removed");
+          return refreshRemoteAssets();
+        })
+        .catch(() => setToast("Remove failed"));
+      return;
+    }
     const src = signatures[i];
     const pid = publicIds[src];
     persistSignatures(signatures.filter((_, j) => j !== i));
@@ -238,8 +351,12 @@ export default function AssetsPage() {
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === "string") {
-        persistLogos([...logos, reader.result]);
-        setToast("Logo added");
+        if (isAccount) {
+          addLogoUrl(reader.result);
+        } else {
+          persistLogos([...logos, reader.result]);
+          setToast("Logo added");
+        }
       }
     };
     reader.readAsDataURL(file);
@@ -262,22 +379,32 @@ export default function AssetsPage() {
     void uploadViaCloudinary(file)
       .then((res) => {
         if (res) {
-          persistPublicIds({ ...publicIds, [res.secure_url]: res.public_id });
-          persistLogos([...logos, res.secure_url]);
-          setToast("Logo uploaded to Cloudinary");
+          if (isAccount) {
+            addLogoUrl(res.secure_url, res.public_id);
+          } else {
+            persistPublicIds({ ...publicIds, [res.secure_url]: res.public_id });
+            persistLogos([...logos, res.secure_url]);
+            setToast("Logo uploaded to Cloudinary");
+          }
         } else {
           dataUrlFallbackLogo(file);
         }
       })
-      .finally(() => setUploading(false));
+      .finally(() => {
+        if (!isAccount) setUploading(false);
+      });
   };
 
   const dataUrlFallbackSig = (file: File) => {
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === "string") {
-        persistSignatures([...signatures, reader.result]);
-        setToast("Signature added");
+        if (isAccount) {
+          addSignatureUrl(reader.result);
+        } else {
+          persistSignatures([...signatures, reader.result]);
+          setToast("Signature added");
+        }
       }
     };
     reader.readAsDataURL(file);
@@ -300,14 +427,20 @@ export default function AssetsPage() {
     void uploadViaCloudinary(file)
       .then((res) => {
         if (res) {
-          persistPublicIds({ ...publicIds, [res.secure_url]: res.public_id });
-          persistSignatures([...signatures, res.secure_url]);
-          setToast("Signature uploaded to Cloudinary");
+          if (isAccount) {
+            addSignatureUrl(res.secure_url, res.public_id);
+          } else {
+            persistPublicIds({ ...publicIds, [res.secure_url]: res.public_id });
+            persistSignatures([...signatures, res.secure_url]);
+            setToast("Signature uploaded to Cloudinary");
+          }
         } else {
           dataUrlFallbackSig(file);
         }
       })
-      .finally(() => setUploading(false));
+      .finally(() => {
+        if (!isAccount) setUploading(false);
+      });
   };
 
   const canvasPos = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -352,14 +485,34 @@ export default function AssetsPage() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const dataUrl = canvas.toDataURL("image/png");
-    persistSignatures([...signatures, dataUrl]);
+    if (isAccount) {
+      addSignatureUrl(dataUrl);
+    } else {
+      persistSignatures([...signatures, dataUrl]);
+      setToast("Signature saved");
+    }
     handleClearCanvas();
-    setToast("Signature saved");
   };
 
   return (
     <AppShell title="Manage Assets" icon={<CardIcon size={20} />} backHref="/dashboard">
       <div className="space-y-5">
+        {isAccount ? (
+          <p className="rounded-2xl border border-[#0C6B4F]/25 bg-[#0C6B4F]/5 px-4 py-3 text-xs font-semibold text-[#0C6B4F]">
+            {remoteLoading
+              ? "Loading account assets…"
+              : "Saving to your account (synced across devices)."}{" "}
+            {remoteError ? (
+              <button
+                type="button"
+                onClick={() => void refreshRemoteAssets()}
+                className="underline hover:no-underline"
+              >
+                Retry
+              </button>
+            ) : null}
+          </p>
+        ) : null}
         {!cloudConfigured ? (
           <p className="rounded-2xl border border-dashed border-stone-300 bg-white/60 px-4 py-3 text-xs text-stone-500">
             Cloudinary not configured — uploads stay in this browser
@@ -467,11 +620,11 @@ export default function AssetsPage() {
               e.target.value = "";
             }}
           />
-          {logos.length > 0 ? (
+          {shownLogos.length > 0 ? (
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {logos.map((src, i) => (
+              {shownLogos.map((src, i) => (
                 <div key={i} className="rounded-xl border border-[#E7E2D8] bg-white p-2">
-                  <AssetImg src={src} publicId={publicIds[src]} alt={`Logo ${i + 1}`} />
+                  <AssetImg src={src} publicId={shownPublicIds[src]} alt={`Logo ${i + 1}`} />
                   <div className="mt-2 flex gap-1.5">
                     <button
                       type="button"
@@ -558,11 +711,11 @@ export default function AssetsPage() {
               </div>
             </div>
             <div className="flex-1">
-              {signatures.length > 0 ? (
+              {shownSignatures.length > 0 ? (
                 <div className="grid grid-cols-2 gap-3">
-                  {signatures.map((src, i) => (
+                  {shownSignatures.map((src, i) => (
                     <div key={i} className="rounded-xl border border-[#E7E2D8] bg-white p-2">
-                      <AssetImg src={src} publicId={publicIds[src]} alt={`Signature ${i + 1}`} />
+                      <AssetImg src={src} publicId={shownPublicIds[src]} alt={`Signature ${i + 1}`} />
                       <div className="mt-2 flex gap-1.5">
                         <button
                           type="button"
