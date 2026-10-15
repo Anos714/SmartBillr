@@ -127,93 +127,95 @@ export function FreelancerPopPdfDocument({ data, totals, watermark }: TemplatePr
             ))}
           </View>
 
-          <View style={styles.totalsWrap}>
-            <View style={styles.totalsBox}>
-              <View style={styles.totalRow}>
-                <Text>Subtotal</Text>
-                <Text>{money(data.currency, totals.subtotal)}</Text>
-              </View>
-              <View style={styles.totalRow}>
-                <Text>Discount</Text>
-                <Text>-{money(data.currency, totals.discount)}</Text>
-              </View>
-              {(data.adjustments ?? []).map((a) => (
-                <View key={a.id} style={styles.totalRow}>
-                  <Text>
-                    {a.label || "Adjustment"}
-                    {a.type === "percentage" ? ` (${a.value}%)` : ""}
-                  </Text>
-                  <Text>
-                    {a.type === "percentage"
-                      ? money(data.currency, (totals.subtotal * a.value) / 100)
-                      : money(data.currency, a.value)}
-                  </Text>
-                </View>
-              ))}
-              <View style={styles.totalRow}>
-                <Text>Tax</Text>
-                <Text>{money(data.currency, totals.taxTotal)}</Text>
-              </View>
-              {totals.adjustmentsTotal !== 0 ? (
+          <View wrap={false}>
+            <View style={styles.totalsWrap}>
+              <View style={styles.totalsBox}>
                 <View style={styles.totalRow}>
-                  <Text>Adjustments</Text>
-                  <Text>{money(data.currency, totals.adjustmentsTotal)}</Text>
+                  <Text>Subtotal</Text>
+                  <Text>{money(data.currency, totals.subtotal)}</Text>
                 </View>
-              ) : null}
-              <View style={styles.divider} />
-              <View style={styles.grandRow}>
-                <Text>Total</Text>
-                <Text>{money(data.currency, totals.grandTotal)}</Text>
-              </View>
-            </View>
-          </View>
-
-          {(data.paymentInfo ?? []).length > 0 ? (
-            <View style={styles.payBlock}>
-              <Text style={styles.payLabel}>Payment info</Text>
-              {(data.paymentInfo ?? []).map((m, i) => (
-                <Text key={i} style={styles.payLine}>
-                  {m.label ? `${m.label}: ` : ""}{m.value}
-                </Text>
-              ))}
-            </View>
-          ) : null}
-
-          {(data.notes || data.terms) ? (
-            <View style={styles.notesRow}>
-              <View style={styles.notesCol}>
-                {data.notes ? (
-                  <>
-                    <Text style={styles.notesLabel}>Notes</Text>
-                    <Text style={styles.notesText}>{data.notes}</Text>
-                  </>
+                <View style={styles.totalRow}>
+                  <Text>Discount</Text>
+                  <Text>-{money(data.currency, totals.discount)}</Text>
+                </View>
+                {(data.adjustments ?? []).map((a) => (
+                  <View key={a.id} style={styles.totalRow}>
+                    <Text>
+                      {a.label || "Adjustment"}
+                      {a.type === "percentage" ? ` (${a.value}%)` : ""}
+                    </Text>
+                    <Text>
+                      {a.type === "percentage"
+                        ? money(data.currency, (totals.subtotal * a.value) / 100)
+                        : money(data.currency, a.value)}
+                    </Text>
+                  </View>
+                ))}
+                <View style={styles.totalRow}>
+                  <Text>Tax</Text>
+                  <Text>{money(data.currency, totals.taxTotal)}</Text>
+                </View>
+                {(data.adjustments ?? []).length > 1 && totals.adjustmentsTotal !== 0 ? (
+                  <View style={styles.totalRow}>
+                    <Text>Adjustments</Text>
+                    <Text>{money(data.currency, totals.adjustmentsTotal)}</Text>
+                  </View>
                 ) : null}
-              </View>
-              <View style={styles.notesCol}>
-                {data.terms ? (
-                  <>
-                    <Text style={styles.notesLabel}>Terms</Text>
-                    <Text style={styles.notesText}>{data.terms}</Text>
-                  </>
-                ) : null}
+                <View style={styles.divider} />
+                <View style={styles.grandRow}>
+                  <Text>Total</Text>
+                  <Text>{money(data.currency, totals.grandTotal)}</Text>
+                </View>
               </View>
             </View>
-          ) : null}
 
-          <View style={styles.sigRow}>
-            <View style={styles.sigBox}>
-              {data.signatureUrl ? (
-                // eslint-disable-next-line jsx-a11y/alt-text
-                <Image src={data.signatureUrl} style={styles.sigImage} />
-              ) : (
-                <View style={styles.sigSpacer} />
-              )}
-              <Text style={styles.sigCaption}>Authorized signature</Text>
+            {(data.paymentInfo ?? []).length > 0 ? (
+              <View style={styles.payBlock}>
+                <Text style={styles.payLabel}>Payment info</Text>
+                {(data.paymentInfo ?? []).map((m, i) => (
+                  <Text key={i} style={styles.payLine}>
+                    {m.label ? `${m.label}: ` : ""}{m.value}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+
+            {(data.notes || data.terms) ? (
+              <View style={styles.notesRow}>
+                <View style={styles.notesCol}>
+                  {data.notes ? (
+                    <>
+                      <Text style={styles.notesLabel}>Notes</Text>
+                      <Text style={styles.notesText}>{data.notes}</Text>
+                    </>
+                  ) : null}
+                </View>
+                <View style={styles.notesCol}>
+                  {data.terms ? (
+                    <>
+                      <Text style={styles.notesLabel}>Terms</Text>
+                      <Text style={styles.notesText}>{data.terms}</Text>
+                    </>
+                  ) : null}
+                </View>
+              </View>
+            ) : null}
+
+            <View style={styles.sigRow}>
+              <View style={styles.sigBox}>
+                {data.signatureUrl ? (
+                  // eslint-disable-next-line jsx-a11y/alt-text
+                  <Image src={data.signatureUrl} style={styles.sigImage} />
+                ) : (
+                  <View style={styles.sigSpacer} />
+                )}
+                <Text style={styles.sigCaption}>Authorized signature</Text>
+              </View>
             </View>
           </View>
         </View>
 
-        {watermark ? <Text style={styles.watermark}>Made with SmartBillr</Text> : null}
+        {watermark ? <Text fixed style={styles.watermark}>Made with SmartBillr</Text> : null}
       </Page>
     </Document>
   );

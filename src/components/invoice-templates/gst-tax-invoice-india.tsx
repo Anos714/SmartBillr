@@ -41,8 +41,8 @@ export function GstTaxInvoiceIndiaPreview({
   const words = amountToWords(totals.grandTotal, data.currency);
   return (
     <div
-      className="mx-auto w-full max-w-[800px] overflow-hidden text-sm shadow-sm"
-      style={{ aspectRatio: "1 / 1.414", backgroundColor: dark ? "#0b1220" : "#ffffff", color: ink, fontFamily }}
+      className="mx-auto w-full max-w-[800px] text-sm shadow-sm"
+      style={{ backgroundColor: dark ? "#0b1220" : "#ffffff", color: ink, fontFamily }}
     >
       {/* Tricolor micro-accent hairline */}
       <div className="flex h-1.5" aria-hidden>
@@ -154,7 +154,7 @@ export function GstTaxInvoiceIndiaPreview({
                 <span>{a.type === "percentage" ? formatMoney(data.currency, (totals.subtotal * a.value) / 100) : formatMoney(data.currency, a.value)}</span>
               </div>
             ))}
-            {totals.adjustmentsTotal !== 0 ? (
+            {(data.adjustments ?? []).length > 1 && totals.adjustmentsTotal !== 0 ? (
               <div className="flex justify-between"><span>Adjustments</span><span>{formatMoney(data.currency, totals.adjustmentsTotal)}</span></div>
             ) : null}
             <div className="border-t-2 pt-2" style={{ borderColor: accent }} aria-hidden />

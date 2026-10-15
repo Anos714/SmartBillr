@@ -49,7 +49,6 @@ export function MinimalWhitePreview({ data, totals, watermark }: TemplateProps) 
     <div
       className="mx-auto w-full max-w-[800px] p-8 text-sm shadow-sm sm:p-12"
       style={{
-        aspectRatio: "1 / 1.414",
         backgroundColor: dark ? "#1a1a18" : "#ffffff",
         color: dark ? "#f5f4f0" : "#18181b",
         fontFamily,
@@ -187,7 +186,7 @@ export function MinimalWhitePreview({ data, totals, watermark }: TemplateProps) 
             <span>Tax</span>
             <span>{formatMoney(data.currency, totals.taxTotal)}</span>
           </div>
-          {totals.adjustmentsTotal !== 0 ? (
+          {(data.adjustments ?? []).length > 1 && totals.adjustmentsTotal !== 0 ? (
             <div className="flex justify-between">
               <span>Adjustments</span>
               <span>{formatMoney(data.currency, totals.adjustmentsTotal)}</span>

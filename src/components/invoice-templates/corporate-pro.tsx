@@ -15,9 +15,8 @@ export function CorporateProPreview({ data, totals, watermark }: TemplateProps) 
   const serifNumbers = "Georgia, 'Times New Roman', serif";
   return (
     <div
-      className="mx-auto w-full max-w-[800px] overflow-hidden text-sm shadow-sm"
+      className="mx-auto w-full max-w-[800px] text-sm shadow-sm"
       style={{
-        aspectRatio: "1 / 1.414",
         backgroundColor: dark ? "#0b1220" : "#ffffff",
         color: dark ? "#e8edf5" : "#0f172a",
         fontFamily,
@@ -234,7 +233,7 @@ export function CorporateProPreview({ data, totals, watermark }: TemplateProps) 
                 {formatMoney(data.currency, totals.taxTotal)}
               </span>
             </div>
-            {totals.adjustmentsTotal !== 0 ? (
+            {(data.adjustments ?? []).length > 1 && totals.adjustmentsTotal !== 0 ? (
               <div className="flex justify-between">
                 <span>Adjustments</span>
                 <span style={{ fontFamily: serifNumbers }}>

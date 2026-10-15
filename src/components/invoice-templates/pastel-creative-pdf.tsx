@@ -171,93 +171,95 @@ export function PastelCreativePdfDocument({ data, totals, watermark }: TemplateP
             ))}
           </View>
 
-          <View style={styles.totalsWrap}>
-            <View style={[styles.totalsCard, { backgroundColor: cardBg }]}>
-              <View style={[styles.totalRow, { color: muted }]}>
-                <Text>Subtotal</Text>
-                <Text style={{ color: ink }}>{money(data.currency, totals.subtotal)}</Text>
-              </View>
-              <View style={[styles.totalRow, { color: muted }]}>
-                <Text>Discount</Text>
-                <Text style={{ color: ink }}>-{money(data.currency, totals.discount)}</Text>
-              </View>
-              {(data.adjustments ?? []).map((a) => (
-                <View key={a.id} style={[styles.totalRow, { color: muted }]}>
-                  <Text>
-                    {a.label || "Adjustment"}
-                    {a.type === "percentage" ? ` (${a.value}%)` : ""}
-                  </Text>
-                  <Text style={{ color: ink }}>
-                    {a.type === "percentage"
-                      ? money(data.currency, (totals.subtotal * a.value) / 100)
-                      : money(data.currency, a.value)}
-                  </Text>
-                </View>
-              ))}
-              <View style={[styles.totalRow, { color: muted }]}>
-                <Text>Tax</Text>
-                <Text style={{ color: ink }}>{money(data.currency, totals.taxTotal)}</Text>
-              </View>
-              {totals.adjustmentsTotal !== 0 ? (
+          <View wrap={false}>
+            <View style={styles.totalsWrap}>
+              <View style={[styles.totalsCard, { backgroundColor: cardBg }]}>
                 <View style={[styles.totalRow, { color: muted }]}>
-                  <Text>Adjustments</Text>
-                  <Text style={{ color: ink }}>{money(data.currency, totals.adjustmentsTotal)}</Text>
+                  <Text>Subtotal</Text>
+                  <Text style={{ color: ink }}>{money(data.currency, totals.subtotal)}</Text>
                 </View>
-              ) : null}
-              <View style={[styles.divider, { borderTopColor: accent }]} />
-              <View style={[styles.grandRow, { color: ink }]}>
-                <Text>Total</Text>
-                <Text>{money(data.currency, totals.grandTotal)}</Text>
-              </View>
-            </View>
-          </View>
-
-          {(data.paymentInfo ?? []).length > 0 ? (
-            <View style={[styles.payCard, { backgroundColor: cardBg }]}>
-              <Text style={[styles.payLabel, { color: accent }]}>Payment info</Text>
-              {(data.paymentInfo ?? []).map((m, i) => (
-                <Text key={i} style={[styles.payLine, { color: muted }]}>
-                  {m.label ? `${m.label}: ` : ""}{m.value}
-                </Text>
-              ))}
-            </View>
-          ) : null}
-
-          {data.notes || data.terms ? (
-            <View style={styles.notesRow}>
-              <View style={[styles.notesCard, { backgroundColor: cardBg }]}>
-                {data.notes ? (
-                  <>
-                    <Text style={[styles.notesLabel, { color: accent }]}>Notes</Text>
-                    <Text style={[styles.notesText, { color: ink }]}>{data.notes}</Text>
-                  </>
+                <View style={[styles.totalRow, { color: muted }]}>
+                  <Text>Discount</Text>
+                  <Text style={{ color: ink }}>-{money(data.currency, totals.discount)}</Text>
+                </View>
+                {(data.adjustments ?? []).map((a) => (
+                  <View key={a.id} style={[styles.totalRow, { color: muted }]}>
+                    <Text>
+                      {a.label || "Adjustment"}
+                      {a.type === "percentage" ? ` (${a.value}%)` : ""}
+                    </Text>
+                    <Text style={{ color: ink }}>
+                      {a.type === "percentage"
+                        ? money(data.currency, (totals.subtotal * a.value) / 100)
+                        : money(data.currency, a.value)}
+                    </Text>
+                  </View>
+                ))}
+                <View style={[styles.totalRow, { color: muted }]}>
+                  <Text>Tax</Text>
+                  <Text style={{ color: ink }}>{money(data.currency, totals.taxTotal)}</Text>
+                </View>
+                {(data.adjustments ?? []).length > 1 && totals.adjustmentsTotal !== 0 ? (
+                  <View style={[styles.totalRow, { color: muted }]}>
+                    <Text>Adjustments</Text>
+                    <Text style={{ color: ink }}>{money(data.currency, totals.adjustmentsTotal)}</Text>
+                  </View>
                 ) : null}
-              </View>
-              <View style={[styles.notesCard, { backgroundColor: cardBg }]}>
-                {data.terms ? (
-                  <>
-                    <Text style={[styles.notesLabel, { color: accent }]}>Terms</Text>
-                    <Text style={[styles.notesText, { color: ink }]}>{data.terms}</Text>
-                  </>
-                ) : null}
+                <View style={[styles.divider, { borderTopColor: accent }]} />
+                <View style={[styles.grandRow, { color: ink }]}>
+                  <Text>Total</Text>
+                  <Text>{money(data.currency, totals.grandTotal)}</Text>
+                </View>
               </View>
             </View>
-          ) : null}
 
-          <View style={styles.sigRow}>
-            <View style={styles.sigBox}>
-              {data.signatureUrl ? (
-                // eslint-disable-next-line jsx-a11y/alt-text
-                <Image src={data.signatureUrl} style={styles.sigImage} />
-              ) : (
-                <View style={[styles.sigSpacer, { borderBottomColor: accent }]} />
-              )}
-              <Text style={[styles.sigCaption, { color: muted }]}>Authorized signature</Text>
+            {(data.paymentInfo ?? []).length > 0 ? (
+              <View style={[styles.payCard, { backgroundColor: cardBg }]}>
+                <Text style={[styles.payLabel, { color: accent }]}>Payment info</Text>
+                {(data.paymentInfo ?? []).map((m, i) => (
+                  <Text key={i} style={[styles.payLine, { color: muted }]}>
+                    {m.label ? `${m.label}: ` : ""}{m.value}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+
+            {data.notes || data.terms ? (
+              <View style={styles.notesRow}>
+                <View style={[styles.notesCard, { backgroundColor: cardBg }]}>
+                  {data.notes ? (
+                    <>
+                      <Text style={[styles.notesLabel, { color: accent }]}>Notes</Text>
+                      <Text style={[styles.notesText, { color: ink }]}>{data.notes}</Text>
+                    </>
+                  ) : null}
+                </View>
+                <View style={[styles.notesCard, { backgroundColor: cardBg }]}>
+                  {data.terms ? (
+                    <>
+                      <Text style={[styles.notesLabel, { color: accent }]}>Terms</Text>
+                      <Text style={[styles.notesText, { color: ink }]}>{data.terms}</Text>
+                    </>
+                  ) : null}
+                </View>
+              </View>
+            ) : null}
+
+            <View style={styles.sigRow}>
+              <View style={styles.sigBox}>
+                {data.signatureUrl ? (
+                  // eslint-disable-next-line jsx-a11y/alt-text
+                  <Image src={data.signatureUrl} style={styles.sigImage} />
+                ) : (
+                  <View style={[styles.sigSpacer, { borderBottomColor: accent }]} />
+                )}
+                <Text style={[styles.sigCaption, { color: muted }]}>Authorized signature</Text>
+              </View>
             </View>
           </View>
         </View>
 
-        {watermark ? <Text style={[styles.watermark, { color: muted }]}>Made with SmartBillr</Text> : null}
+        {watermark ? <Text fixed style={[styles.watermark, { color: muted }]}>Made with SmartBillr</Text> : null}
       </Page>
     </Document>
   );

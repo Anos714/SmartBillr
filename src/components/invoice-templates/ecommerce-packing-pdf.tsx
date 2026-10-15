@@ -109,35 +109,50 @@ export function EcommercePackingPdfDocument({ data, totals, watermark }: Templat
               <Text style={[styles.colAmt, { color: strong }]}>{money(data.currency, it.qty * it.rate)}</Text>
             </View>
           ))}
-          <View style={styles.bottomRow}>
-            <View style={[styles.thanks, { borderColor: accent }]}>
-              <Text style={{ fontWeight: "bold", color: strong }}>Thank you for shopping with {data.fromName}!</Text>
-              {data.notes ? <Text style={{ marginTop: 4, color: body }}>{data.notes}</Text> : null}
+          <View wrap={false}>
+            <View style={styles.bottomRow}>
+              <View style={[styles.thanks, { borderColor: accent }]}>
+                <Text style={{ fontWeight: "bold", color: strong }}>Thank you for shopping with {data.fromName}!</Text>
+                {data.notes ? <Text style={{ marginTop: 4, color: body }}>{data.notes}</Text> : null}
+              </View>
+              <View style={styles.totalsBox}>
+                <View style={[styles.totalRow, { color: body }]}><Text>Subtotal</Text><Text>{money(data.currency, totals.subtotal)}</Text></View>
+                <View style={[styles.totalRow, { color: body }]}><Text>Discount</Text><Text>-{money(data.currency, totals.discount)}</Text></View>
+                {(data.adjustments ?? []).map((a) => (
+                  <View key={a.id} style={[styles.totalRow, { color: body }]}>
+                    <Text>
+                      {a.label || "Adjustment"}
+                      {a.type === "percentage" ? ` (${a.value}%)` : ""}
+                    </Text>
+                    <Text>
+                      {a.type === "percentage"
+                        ? money(data.currency, (totals.subtotal * a.value) / 100)
+                        : money(data.currency, a.value)}
+                    </Text>
+                  </View>
+                ))}
+                <View style={[styles.totalRow, { color: body }]}><Text>Tax</Text><Text>{money(data.currency, totals.taxTotal)}</Text></View>
+                {(data.adjustments ?? []).length > 1 && totals.adjustmentsTotal !== 0 ? (
+                  <View style={[styles.totalRow, { color: body }]}><Text>Adjustments</Text><Text>{money(data.currency, totals.adjustmentsTotal)}</Text></View>
+                ) : null}
+                <View style={[styles.divider, { borderTopColor: accent }]} />
+                <View style={[styles.grandRow, { color: strong }]}><Text>Total</Text><Text>{money(data.currency, totals.grandTotal)}</Text></View>
+              </View>
             </View>
-            <View style={styles.totalsBox}>
-              <View style={[styles.totalRow, { color: body }]}><Text>Subtotal</Text><Text>{money(data.currency, totals.subtotal)}</Text></View>
-              <View style={[styles.totalRow, { color: body }]}><Text>Discount</Text><Text>-{money(data.currency, totals.discount)}</Text></View>
-              <View style={[styles.totalRow, { color: body }]}><Text>Tax</Text><Text>{money(data.currency, totals.taxTotal)}</Text></View>
-              {totals.adjustmentsTotal !== 0 ? (
-                <View style={[styles.totalRow, { color: body }]}><Text>Adjustments</Text><Text>{money(data.currency, totals.adjustmentsTotal)}</Text></View>
-              ) : null}
-              <View style={[styles.divider, { borderTopColor: accent }]} />
-              <View style={[styles.grandRow, { color: strong }]}><Text>Total</Text><Text>{money(data.currency, totals.grandTotal)}</Text></View>
-            </View>
-          </View>
-          <View style={styles.sigRow}>
-            <View style={styles.sigBox}>
-              {data.signatureUrl ? (
-                // eslint-disable-next-line jsx-a11y/alt-text
-                <Image src={data.signatureUrl} style={styles.sigImage} />
-              ) : (
-                <View style={[styles.sigSpacer, { borderBottomColor: muted }]} />
-              )}
-              <Text style={[styles.sigCaption, { color: muted }]}>Authorized signature</Text>
+            <View style={styles.sigRow}>
+              <View style={styles.sigBox}>
+                {data.signatureUrl ? (
+                  // eslint-disable-next-line jsx-a11y/alt-text
+                  <Image src={data.signatureUrl} style={styles.sigImage} />
+                ) : (
+                  <View style={[styles.sigSpacer, { borderBottomColor: muted }]} />
+                )}
+                <Text style={[styles.sigCaption, { color: muted }]}>Authorized signature</Text>
+              </View>
             </View>
           </View>
         </View>
-        {watermark ? <Text style={[styles.watermark, { color: muted }]}>Made with SmartBillr</Text> : null}
+        {watermark ? <Text fixed style={[styles.watermark, { color: muted }]}>Made with SmartBillr</Text> : null}
       </Page>
     </Document>
   );
