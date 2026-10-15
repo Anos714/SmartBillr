@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { AppShell, TopbarAction } from "@/components/AppShell";
 import { CustomSelect } from "@/components/ui/select";
+import { AnchoredMenu } from "@/components/ui/anchored-menu";
 import { InvoiceIcon } from "@/components/icons";
 import {
   deleteInvoice,
@@ -155,15 +156,6 @@ export default function InvoicesPage() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  useEffect(() => {
-    if (!openMenu) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpenMenu(null);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [openMenu ]);
-
   const handleStatus = (v: StatusFilter) => {
     setStatus(v);
     setPage(1);
@@ -304,8 +296,113 @@ export default function InvoicesPage() {
     </>
   );
 
-  const menuItemClass =
-    "flex w-full items-center rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-stone-700 transition hover:bg-[#0C6B4F]/5 hover:text-[#0C6B4F]";
+const menuItemClass =
+  "flex w-full items-center rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-stone-700 transition hover:bg-[#0C6B4F]/5 hover:text-[#0C6B4F]";
+
+function RowActions({
+  entry,
+  isAccount,
+  open,
+  onToggle,
+  onClose,
+  onSetStatus,
+  onDuplicate,
+  onMoveToServer,
+  onDelete,
+}: {
+  entry: SavedInvoice;
+  isAccount: boolean;
+  open: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  onSetStatus: (id: string, next: InvoiceStatus) => void;
+  onDuplicate: (id: string) => void;
+  onMoveToServer: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const btnRef = useRef<HTMLButtonElement>(null);
+  return (
+    <div className="flex items-center gap-1.5">
+      <Link
+        href={`/create/invoice?load=${entry.id}`}
+        className="rounded-lg border border-[#E7E2D8] px-2 py-1 text-xs font-semibold text-[#0C6B4F] hover:border-[#0C6B4F]/50"
+      >
+        View
+      </Link>
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={onToggle}
+        aria-label={`More actions for ${serialOf(entry)}`}
+        aria-expanded={open}
+        className="rounded-lg border border-[#E7E2D8] px-2 py-1 text-xs font-semibold text-stone-600 hover:border-[#0C6B4F]/50 hover:text-[#0C6B4F]"
+      >
+        <MoreHorizontal className="h-3.5 w-3.5" aria-hidden />
+      </button>
+      <AnchoredMenu
+        open={open}
+        onClose={onClose}
+        anchorRef={btnRef}
+        menuClassName="w-44"
+      >
+        {entry.status !== "paid" ? (
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => onSetStatus(entry.id, "paid")}
+            className={menuItemClass}
+          >
+            Mark Paid
+          </button>
+        ) : null}
+        {entry.status !== "pending" ? (
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => onSetStatus(entry.id, "pending")}
+            className={menuItemClass}
+          >
+            Mark Pending
+          </button>
+        ) : null}
+        <Link
+          href={`/create/invoice?load=${entry.id}`}
+          role="menuitem"
+          onClick={onClose}
+          className={menuItemClass}
+        >
+          Edit
+        </Link>
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => onDuplicate(entry.id)}
+          className={menuItemClass}
+        >
+          Duplicate
+        </button>
+        {!isAccount ? (
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => onMoveToServer(entry.id)}
+            className={menuItemClass}
+          >
+            Move to server
+          </button>
+        ) : null}
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => onDelete(entry.id)}
+          className="flex w-full items-center rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-red-600 transition hover:bg-red-50"
+        >
+          Delete Invoice
+        </button>
+      </AnchoredMenu>
+    </div>
+  );
+}
 
   return (
     <AppShell
@@ -485,96 +582,19 @@ export default function InvoicesPage() {
                         {paidAt ? new Date(paidAt).toLocaleDateString() : "—"}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <Link
-                            href={`/create/invoice?load=${e.id}`}
-                            className="rounded-lg border border-[#E7E2D8] px-2 py-1 text-xs font-semibold text-[#0C6B4F] hover:border-[#0C6B4F]/50"
-                          >
-                            View
-                          </Link>
-                          <div className="relative">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setOpenMenu((m) => (m === e.id ? null : e.id))
-                              }
-                              aria-label={`More actions for ${serialOf(e)}`}
-                              aria-expanded={openMenu === e.id}
-                              className="rounded-lg border border-[#E7E2D8] px-2 py-1 text-xs font-semibold text-stone-600 hover:border-[#0C6B4F]/50 hover:text-[#0C6B4F]"
-                            >
-                              <MoreHorizontal className="h-3.5 w-3.5" aria-hidden />
-                            </button>
-                            {openMenu === e.id ? (
-                              <>
-                                <button
-                                  type="button"
-                                  aria-label="Close menu"
-                                  onClick={closeMenu}
-                                  className="fixed inset-0 z-30 cursor-default bg-transparent"
-                                />
-                                <div
-                                  role="menu"
-                                  className="absolute top-full right-0 z-40 mt-2 w-44 animate-[menu-pop_.14s_ease-out] rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8]/95 p-1.5 shadow-[0_24px_60px_-20px_rgba(20,20,18,0.45)] backdrop-blur"
-                                >
-                                  {e.status !== "paid" ? (
-                                    <button
-                                      type="button"
-                                      role="menuitem"
-                                      onClick={() => handleSetStatus(e.id, "paid")}
-                                      className={menuItemClass}
-                                    >
-                                      Mark Paid
-                                    </button>
-                                  ) : null}
-                                  {e.status !== "pending" ? (
-                                    <button
-                                      type="button"
-                                      role="menuitem"
-                                      onClick={() => handleSetStatus(e.id, "pending")}
-                                      className={menuItemClass}
-                                    >
-                                      Mark Pending
-                                    </button>
-                                  ) : null}
-                                  <Link
-                                    href={`/create/invoice?load=${e.id}`}
-                                    role="menuitem"
-                                    onClick={closeMenu}
-                                    className={menuItemClass}
-                                  >
-                                    Edit
-                                  </Link>
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    onClick={() => handleDuplicate(e.id)}
-                                    className={menuItemClass}
-                                  >
-                                    Duplicate
-                                  </button>
-                                  {!isAccount ? (
-                                    <button
-                                      type="button"
-                                      role="menuitem"
-                                      onClick={() => handleMoveToServer(e.id)}
-                                      className={menuItemClass}
-                                    >
-                                      Move to server
-                                    </button>
-                                  ) : null}
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    onClick={() => handleDelete(e.id)}
-                                    className="flex w-full items-center rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-red-600 transition hover:bg-red-50"
-                                  >
-                                    Delete Invoice
-                                  </button>
-                                </div>
-                              </>
-                            ) : null}
-                          </div>
-                        </div>
+                        <RowActions
+                          entry={e}
+                          isAccount={isAccount}
+                          open={openMenu === e.id}
+                          onToggle={() =>
+                            setOpenMenu((m) => (m === e.id ? null : e.id))
+                          }
+                          onClose={closeMenu}
+                          onSetStatus={handleSetStatus}
+                          onDuplicate={handleDuplicate}
+                          onMoveToServer={handleMoveToServer}
+                          onDelete={handleDelete}
+                        />
                       </td>
                     </tr>
                   );
