@@ -1,8 +1,9 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { PDFDownloadLink, pdf } from "@react-pdf/renderer";
+import "@/lib/pdf-font";
 import {
   Trash2,
   Upload,
@@ -40,8 +41,65 @@ export const labelCls =
 
 type ViewMode = "both" | "form" | "preview";
 
+const menuShellCls =
+  "absolute top-full right-0 z-40 mt-2 w-60 animate-[menu-pop_.14s_ease-out] rounded-2xl border border-[#E7E2D8] bg-[#FFFDF8]/95 p-1.5 shadow-[0_24px_60px_-20px_rgba(20,20,18,0.45)] backdrop-blur";
+
+const menuLabelCls =
+  "px-2 pt-1 pb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-stone-400";
+
 const menuItemCls =
-  "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50";
+  "flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left text-xs font-semibold text-stone-700 transition hover:bg-[#0C6B4F]/5 hover:text-[#0C6B4F] disabled:cursor-not-allowed disabled:opacity-50";
+
+const menuIconTileCls =
+  "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#0C6B4F]/10 text-[#0C6B4F]";
+
+const menuHintCls =
+  "ml-auto rounded-md border border-[#E7E2D8] bg-white px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-stone-400";
+
+function MenuShell({
+  label,
+  children,
+  wide,
+}: {
+  label: string;
+  children: ReactNode;
+  wide?: boolean;
+}) {
+  return (
+    <div role="menu" className={cn(menuShellCls, wide && "w-72")}>
+      <p className={menuLabelCls}>{label}</p>
+      {children}
+    </div>
+  );
+}
+
+function MenuItem({
+  icon,
+  label,
+  hint,
+  onClick,
+  disabled,
+}: {
+  icon: ReactNode;
+  label: string;
+  hint?: string;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      disabled={disabled}
+      className={menuItemCls}
+    >
+      <span className={menuIconTileCls}>{icon}</span>
+      <span>{label}</span>
+      {hint ? <kbd className={menuHintCls}>{hint}</kbd> : null}
+    </button>
+  );
+}
 
 function GripHandle() {
   return (
@@ -310,24 +368,29 @@ function EditorInner() {
           ) : null}
         </TopbarAction>
         {errorsOpen ? (
-          <div className="absolute top-full right-0 z-40 mt-2 max-h-80 w-72 overflow-auto rounded-xl border border-[#E7E2D8] bg-white p-2 shadow-xl">
+          <MenuShell label="Validation" wide>
             {issues.length === 0 ? (
               <p className="px-2 py-3 text-center text-xs text-stone-500">
                 No issues — looks good.
               </p>
             ) : (
-              <ul className="space-y-1">
+              <ul className="max-h-80 space-y-1 overflow-auto">
                 {issues.map((issue, i) => (
-                  <li key={i} className="rounded-lg bg-red-50 px-2 py-1.5 text-xs">
-                    <span className="font-mono font-bold text-red-700">
-                      {issue.path.join(".") || "invoice"}
-                    </span>{" "}
-                    <span className="text-stone-600">{issue.message}</span>
+                  <li key={i} className="flex items-start gap-2.5 rounded-xl bg-red-50/80 px-2 py-2 text-xs transition hover:bg-red-100">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-red-600/10 text-red-600">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-mono font-bold text-red-700">
+                        {issue.path.join(".") || "invoice"}
+                      </span>
+                      <span className="text-stone-600">{issue.message}</span>
+                    </span>
                   </li>
                 ))}
               </ul>
             )}
-          </div>
+          </MenuShell>
         ) : null}
       </div>
 
@@ -401,22 +464,20 @@ function EditorInner() {
           <ChevronDown className={cn("h-4 w-4 transition-transform", downloadOpen && "rotate-180")} />
         </button>
         {downloadOpen ? (
-          <div
-            className="absolute top-full right-0 z-40 mt-2 w-52 rounded-xl border border-[#E7E2D8] bg-white p-1 shadow-xl"
-            role="menu"
-          >
-            <button type="button" role="menuitem" onClick={handleSaveInvoice} className={menuItemCls}>
-              <Save className="h-3.5 w-3.5" /> Save Invoice
-            </button>
-            <button
-              type="button"
-              role="menuitem"
+          <MenuShell label="Export">
+            <MenuItem
+              icon={<Save className="h-3.5 w-3.5" />}
+              label="Save Invoice"
+              hint="LOCAL"
+              onClick={handleSaveInvoice}
+            />
+            <MenuItem
+              icon={<Eye className="h-3.5 w-3.5" />}
+              label={pdfBusy ? "Opening…" : "View PDF"}
+              hint="VIEW"
               onClick={() => void handleViewPdf()}
               disabled={pdfBusy}
-              className={menuItemCls}
-            >
-              <Eye className="h-3.5 w-3.5" /> {pdfBusy ? "Opening…" : "View PDF"}
-            </button>
+            />
             {mounted && pdfDoc ? (
               <PDFDownloadLink
                 document={pdfDoc}
@@ -426,22 +487,23 @@ function EditorInner() {
               >
                 {({ loading }) => (
                   <>
-                    <DownloadIcon size={14} />
-                    {loading ? "Preparing…" : "Download PDF"}
+                    <span className={menuIconTileCls}>
+                      <DownloadIcon size={14} />
+                    </span>
+                    <span>{loading ? "Preparing…" : "Download PDF"}</span>
+                    <kbd className={menuHintCls}>PDF</kbd>
                   </>
                 )}
               </PDFDownloadLink>
             ) : null}
-            <button
-              type="button"
-              role="menuitem"
+            <MenuItem
+              icon={<ImageIcon className="h-3.5 w-3.5" />}
+              label={pngBusy ? "Exporting…" : "Download PNG"}
+              hint="PNG"
               onClick={() => void handleDownloadPng()}
               disabled={pngBusy}
-              className={menuItemCls}
-            >
-              <ImageIcon className="h-3.5 w-3.5" /> {pngBusy ? "Exporting…" : "Download PNG"}
-            </button>
-          </div>
+            />
+          </MenuShell>
         ) : null}
       </div>
     </>
