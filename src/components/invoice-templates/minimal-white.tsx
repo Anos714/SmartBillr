@@ -160,8 +160,8 @@ export function MinimalWhitePreview({ data, totals, watermark }: TemplateProps) 
         </tbody>
       </table>
 
-      <div className="mt-6 flex justify-end">
-        <div className="w-64 space-y-1.5" style={{ color: dark ? "#d6d3d1" : "#52525b" }}>
+      <div className="mt-6 flex">
+        <div className="ml-auto w-64 space-y-1.5" style={{ color: dark ? "#d6d3d1" : "#52525b" }}>
           <div className="flex justify-between">
             <span>Subtotal</span>
             <span>{formatMoney(data.currency, totals.subtotal)}</span>
@@ -187,6 +187,12 @@ export function MinimalWhitePreview({ data, totals, watermark }: TemplateProps) 
             <span>Tax</span>
             <span>{formatMoney(data.currency, totals.taxTotal)}</span>
           </div>
+          {totals.adjustmentsTotal !== 0 ? (
+            <div className="flex justify-between">
+              <span>Adjustments</span>
+              <span>{formatMoney(data.currency, totals.adjustmentsTotal)}</span>
+            </div>
+          ) : null}
           <div
             className="flex justify-between border-t pt-2 text-base font-bold"
             style={{ borderColor: accent, color: dark ? "#fafaf9" : "#18181b" }}
@@ -196,17 +202,6 @@ export function MinimalWhitePreview({ data, totals, watermark }: TemplateProps) 
           </div>
         </div>
       </div>
-
-      {(data.paymentInfo ?? []).length > 0 && (
-        <div className="mt-6 text-xs" style={{ color: dark ? "#d6d3d1" : "#52525b" }}>
-          <p className="font-semibold uppercase tracking-wide">Payment info</p>
-          {(data.paymentInfo ?? []).map((m, i) => (
-            <p key={i} className="mt-1">
-              {m.label ? `${m.label}: ` : ""}{m.value}
-            </p>
-          ))}
-        </div>
-      )}
 
       {(data.notes || data.terms) && (
         <div className="mt-8 grid gap-4 text-xs sm:grid-cols-2" style={{ color: dark ? "#a8a29e" : "#71717a" }}>
@@ -225,17 +220,31 @@ export function MinimalWhitePreview({ data, totals, watermark }: TemplateProps) 
         </div>
       )}
 
-      {data.signatureUrl ? (
-        <div className="mt-6 flex justify-end">
-          <div className="text-right">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={data.signatureUrl} alt="Signature" className="ml-auto h-12 w-auto object-contain" />
-            <p className="mt-1 text-[11px]" style={{ color: dark ? "#a8a29e" : "#71717a" }}>
-              Authorized signature
-            </p>
-          </div>
+      <div className="mt-6 flex items-end justify-between gap-6">
+        <div className="min-w-0 flex-1 text-xs" style={{ color: dark ? "#d6d3d1" : "#52525b" }}>
+          {(data.paymentInfo ?? []).length > 0 ? (
+            <div>
+              <p className="font-semibold uppercase tracking-wide">Payment info</p>
+              {(data.paymentInfo ?? []).map((m, i) => (
+                <p key={i} className="mt-1">
+                  {m.label ? `${m.label}: ` : ""}{m.value}
+                </p>
+              ))}
+            </div>
+          ) : null}
         </div>
-      ) : null}
+        <div className="ml-auto shrink-0 text-right">
+          {data.signatureUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={data.signatureUrl} alt="Signature" className="ml-auto h-12 w-auto object-contain" />
+          ) : (
+            <div className="ml-auto h-12 w-40 border-b border-stone-300" aria-hidden />
+          )}
+          <p className="mt-1 text-[10px]" style={{ color: dark ? "#a8a29e" : "#71717a" }}>
+            Authorized signature
+          </p>
+        </div>
+      </div>
 
       {watermark ? (
         <p className="mt-10 text-center text-[11px]" style={{ color: dark ? "#78716c" : "#a1a1aa" }}>

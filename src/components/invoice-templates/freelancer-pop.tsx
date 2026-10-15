@@ -129,8 +129,8 @@ export function FreelancerPopPreview({ data, totals, watermark }: TemplateProps)
           ))}
         </div>
 
-        <div className="mt-5 flex justify-end">
-          <div className="w-64 space-y-1.5" style={{ color: dark ? "#d6d3d1" : "#52525b" }}>
+        <div className="mt-5 flex">
+          <div className="ml-auto w-64 space-y-1.5" style={{ color: dark ? "#d6d3d1" : "#52525b" }}>
             <div className="flex justify-between">
               <span>Subtotal</span>
               <span>{formatMoney(data.currency, totals.subtotal)}</span>
@@ -156,6 +156,12 @@ export function FreelancerPopPreview({ data, totals, watermark }: TemplateProps)
               <span>Tax</span>
               <span>{formatMoney(data.currency, totals.taxTotal)}</span>
             </div>
+            {totals.adjustmentsTotal !== 0 ? (
+              <div className="flex justify-between">
+                <span>Adjustments</span>
+                <span>{formatMoney(data.currency, totals.adjustmentsTotal)}</span>
+              </div>
+            ) : null}
             <div
               className="flex justify-between rounded-lg px-3 py-2 text-sm font-bold text-white"
               style={{ backgroundColor: accent }}
@@ -166,38 +172,49 @@ export function FreelancerPopPreview({ data, totals, watermark }: TemplateProps)
           </div>
         </div>
 
-        {(data.paymentInfo ?? []).length > 0 && (
-          <div
-            className="mt-5 rounded-xl p-3 text-xs"
-            style={{ backgroundColor: dark ? "#292524" : "#fafaf9", color: dark ? "#d6d3d1" : "#52525b" }}
-          >
-            <p className="font-semibold uppercase tracking-wide">Payment info</p>
-            {(data.paymentInfo ?? []).map((m, i) => (
-              <p key={i} className="mt-1">
-                {m.label ? `${m.label}: ` : ""}{m.value}
-              </p>
-            ))}
-          </div>
-        )}
-
         {(data.notes || data.terms) && (
           <div className="mt-6 grid gap-4 text-xs sm:grid-cols-2" style={{ color: dark ? "#a8a29e" : "#71717a" }}>
-            {data.notes ? <p className="whitespace-pre-line rounded-lg p-3" style={{ backgroundColor: dark ? "#292524" : "#fafaf9" }}>{data.notes}</p> : null}
-            {data.terms ? <p className="whitespace-pre-line rounded-lg p-3" style={{ backgroundColor: dark ? "#292524" : "#fafaf9" }}>{data.terms}</p> : null}
+            {data.notes ? (
+              <div className="rounded-lg p-3" style={{ backgroundColor: dark ? "#292524" : "#fafaf9" }}>
+                <p className="font-semibold uppercase tracking-wide">Notes</p>
+                <p className="mt-1 whitespace-pre-line">{data.notes}</p>
+              </div>
+            ) : null}
+            {data.terms ? (
+              <div className="rounded-lg p-3" style={{ backgroundColor: dark ? "#292524" : "#fafaf9" }}>
+                <p className="font-semibold uppercase tracking-wide">Terms</p>
+                <p className="mt-1 whitespace-pre-line">{data.terms}</p>
+              </div>
+            ) : null}
           </div>
         )}
 
-        {data.signatureUrl ? (
-          <div className="mt-5 flex justify-end">
-            <div className="text-right">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={data.signatureUrl} alt="Signature" className="ml-auto h-12 w-auto object-contain" />
-              <p className="mt-1 text-[11px]" style={{ color: dark ? "#a8a29e" : "#71717a" }}>
-                Authorized signature
-              </p>
+        <div className="mt-5 flex items-end justify-between gap-6">
+          {(data.paymentInfo ?? []).length > 0 ? (
+            <div
+              className="min-w-0 flex-1 rounded-xl p-3 text-xs"
+              style={{ backgroundColor: dark ? "#292524" : "#fafaf9", color: dark ? "#d6d3d1" : "#52525b" }}
+            >
+              <p className="font-semibold uppercase tracking-wide">Payment info</p>
+              {(data.paymentInfo ?? []).map((m, i) => (
+                <p key={i} className="mt-1">
+                  {m.label ? `${m.label}: ` : ""}{m.value}
+                </p>
+              ))}
             </div>
+          ) : null}
+          <div className="ml-auto shrink-0 text-right">
+            {data.signatureUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={data.signatureUrl} alt="Signature" className="ml-auto h-12 w-auto object-contain" />
+            ) : (
+              <div className="ml-auto h-12 w-40 border-b border-stone-300" aria-hidden />
+            )}
+            <p className="mt-1 text-[10px]" style={{ color: dark ? "#a8a29e" : "#71717a" }}>
+              Authorized signature
+            </p>
           </div>
-        ) : null}
+        </div>
 
         {watermark ? (
           <p className="mt-8 text-center text-[11px]" style={{ color: dark ? "#78716c" : "#a1a1aa" }}>

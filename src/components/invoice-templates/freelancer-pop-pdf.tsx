@@ -1,6 +1,8 @@
 import { Document, Page, StyleSheet, Text, View, Image } from "@react-pdf/renderer";
 import type { TemplateProps } from "./minimal-white";
 import { invoiceDisplayNo } from "@/lib/invoice";
+import "@/lib/pdf-font";
+import { INVOICE_PDF_FONT_FAMILY } from "@/lib/pdf-font";
 
 const money = (currency: string, value: number) => {
   try {
@@ -19,7 +21,7 @@ const itemName = (it: { name?: string; desc?: string }) =>
   (it.name && it.name.trim()) || (it.desc && it.desc.trim()) || "Untitled item";
 
 const styles = StyleSheet.create({
-  page: { fontSize: 10, color: "#18181b", backgroundColor: "#ffffff", fontFamily: "Helvetica" },
+  page: { fontSize: 10, color: "#18181b", backgroundColor: "#ffffff", fontFamily: INVOICE_PDF_FONT_FAMILY },
   header: { padding: 32, flexDirection: "row", justifyContent: "space-between" },
   headerLabel: { fontSize: 8, fontWeight: "bold", color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: 2 },
   headerNo: { fontSize: 24, fontWeight: "bold", color: "#ffffff", marginTop: 4 },
@@ -35,8 +37,11 @@ const styles = StyleSheet.create({
   itemDesc: { fontWeight: "bold" },
   itemSub: { fontSize: 8, color: "#71717a", marginTop: 2 },
   totalsWrap: { alignItems: "flex-end", marginTop: 16 },
-  totalsBox: { width: 220 },
+  totalsBox: { width: 256 },
   totalRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4, color: "#52525b" },
+  grandRow: { flexDirection: "row", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: "#0C6B4F", paddingTop: 6, fontSize: 16, fontWeight: "bold", color: "#18181b" },
+  foot: { flexDirection: "row", gap: 24, marginTop: 28, fontSize: 8, color: "#71717a" },
+  footCol: { flex: 1 },
   watermark: { textAlign: "center", marginTop: 28, fontSize: 8, color: "#a1a1aa" },
 });
 
@@ -138,32 +143,64 @@ export function FreelancerPopPdfDocument({ data, totals, watermark }: TemplatePr
                 <Text>Tax</Text>
                 <Text>{money(data.currency, totals.taxTotal)}</Text>
               </View>
+              {totals.adjustmentsTotal !== 0 ? (
+                <View style={styles.totalRow}>
+                  <Text>Adjustments</Text>
+                  <Text>{money(data.currency, totals.adjustmentsTotal)}</Text>
+                </View>
+              ) : null}
+              <View style={[styles.grandRow, { borderTopColor: accent }]}>
+                <Text>Total</Text>
+                <Text>{money(data.currency, totals.grandTotal)}</Text>
+              </View>
             </View>
           </View>
 
-          {(data.paymentInfo ?? []).length > 0 && (
-            <View style={{ marginTop: 12 }}>
-              <Text style={styles.metaLabel}>Payment info</Text>
-              {(data.paymentInfo ?? []).map((m, i) => (
-                <Text key={i} style={{ fontSize: 9, color: "#52525b", marginTop: 2 }}>
-                  {m.label ? `${m.label}: ` : ""}{m.value}
-                </Text>
-              ))}
+          {(data.notes || data.terms) ? (
+            <View style={styles.foot}>
+              {data.notes ? (
+                <View style={styles.footCol}>
+                  <Text style={styles.metaLabel}>Notes</Text>
+                  <Text>{data.notes}</Text>
+                </View>
+              ) : null}
+              {data.terms ? (
+                <View style={styles.footCol}>
+                  <Text style={styles.metaLabel}>Terms</Text>
+                  <Text>{data.terms}</Text>
+                </View>
+              ) : null}
             </View>
-          )}
+          ) : null}
 
-          {data.signatureUrl ? (
-            <View style={{ alignItems: "flex-end", marginTop: 16 }}>
-              {/* eslint-disable-next-line jsx-a11y/alt-text */}
-              <Image
-                src={data.signatureUrl}
-                style={{ width: 120, height: 40, objectFit: "contain" }}
-              />
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 20, gap: 24 }}>
+            <View style={{ flex: 1 }}>
+              {(data.paymentInfo ?? []).length > 0 ? (
+                <View>
+                  <Text style={styles.metaLabel}>Payment info</Text>
+                  {(data.paymentInfo ?? []).map((m, i) => (
+                    <Text key={i} style={{ fontSize: 9, color: "#52525b", marginTop: 2 }}>
+                      {m.label ? `${m.label}: ` : ""}{m.value}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+            <View style={{ alignItems: "flex-end", marginLeft: "auto" }}>
+              {data.signatureUrl ? (
+                // eslint-disable-next-line jsx-a11y/alt-text
+                <Image
+                  src={data.signatureUrl}
+                  style={{ width: 120, height: 40, objectFit: "contain" }}
+                />
+              ) : (
+                <View style={{ width: 160, height: 40, borderBottomWidth: 1, borderBottomColor: "#d6d3d1" }} />
+              )}
               <Text style={{ fontSize: 8, color: "#71717a", marginTop: 4 }}>
                 Authorized signature
               </Text>
             </View>
-          ) : null}
+          </View>
 
           {watermark ? <Text style={styles.watermark}>Made with SmartBillr</Text> : null}
         </View>
